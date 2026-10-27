@@ -635,7 +635,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   // planks: a dial (the switch) cranks the strip left or right; pegs stick out below it, past the leaves
   const insPlanks = PL_Y.map((y, r) => {
     const cy = y + STRIP_H / 2;
-    T(108, y - 11, `переключатель ${ROWS[r]}`, { 'font-size': 12, 'text-anchor': 'middle' });
+    T(108, y - 18, `переключатель ${ROWS[r]}`, { 'font-size': 12, 'text-anchor': 'middle' });
     I('circle', { cx: 108, cy, r: 24, fill: '#0f2348', stroke: BP.txt, 'stroke-width': 2 });
     const knob = I('line', { x1: 108, y1: cy + 18, x2: 108, y2: cy - 18, stroke: BP.txt, 'stroke-width': 5, 'stroke-linecap': 'round', style: `transition: transform .25s ease; transform-origin: 108px ${cy}px` });
     T(84, cy + 40, '0', { 'font-size': 12, 'text-anchor': 'middle' }); T(132, cy + 40, '1', { 'font-size': 12, 'text-anchor': 'middle' });
