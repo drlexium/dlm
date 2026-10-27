@@ -59,7 +59,7 @@ h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 
 @media (max-width: 1100px) { .bench { grid-template-columns: minmax(0, 1fr); } }
 .pane { display: grid; gap: 10px; min-width: 0; }
 .pane-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
-.pane h2, .lower h2, .book h2 { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.pane h2, .lower h2 { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0; }
 svg.view { width: 100%; height: auto; display: block; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 svg#dlm { filter: drop-shadow(0 14px 22px rgba(10, 20, 50, .22)); }
 svg#inside { border-radius: 14px; background: var(--bp-bg); }
@@ -93,8 +93,9 @@ svg .hit:focus-visible .focusring { stroke: var(--blue); stroke-width: 4; }
 @keyframes run { to { stroke-dashoffset: -18; } }
 @media (prefers-reduced-motion: reduce) { #inside .flow { animation: none; stroke-dasharray: none; } * { transition: none !important; } }
 
-.lower { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-@media (max-width: 1100px) { .lower { grid-template-columns: minmax(0, 1fr); } }
+.lower { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "progs tt cols" "progs book book"; gap: 24px; align-items: start; }
+.progs-box { grid-area: progs; } .tt-box { grid-area: tt; } .cols-box { grid-area: cols; } .lower > .book { grid-area: book; }
+@media (max-width: 1100px) { .lower { grid-template-columns: minmax(0, 1fr); grid-template-areas: "book" "progs" "tt" "cols"; } }
 .lower > div { display: grid; gap: 10px; min-width: 0; }
 .programs { display: grid; gap: 6px; }
 .prog { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; width: 100%; padding: 9px 12px; border-radius: 10px;
@@ -105,6 +106,7 @@ svg .hit:focus-visible .focusring { stroke: var(--blue); stroke-width: 4; }
 .prog .t { font-weight: 700; }
 .prog .src { font-size: 12px; color: var(--muted); align-self: center; white-space: nowrap; }
 .prog .d { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.prog-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: stretch; }
 .group-label { font-size: 12px; color: var(--muted); margin: 8px 0 2px; }
 .tt-wrap { overflow-x: auto; }
 table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 14px; width: 100%; font-variant-numeric: tabular-nums; }
@@ -121,17 +123,13 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
 .exprs .n, .exprs .to { color: var(--muted); }
 .exprs .dead { color: var(--muted); font-style: italic; font-family: var(--font-body); }
 
-.book { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding-block: 36px 40px; padding-inline: clamp(18px, 5vw, 64px); display: grid; gap: 34px; }
-.book-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; align-items: baseline; }
-.book-head p { margin: 0; color: var(--muted); max-width: 60ch; }
+.book { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 24px clamp(16px, 3vw, 36px); display: grid; gap: 16px; }
 .page { font-family: var(--font-book); max-width: 68ch; display: grid; gap: 12px; }
 .page h3 { font-family: var(--font-book); font-size: 20px; margin: 0; letter-spacing: .04em; }
 .page h3 .gn { letter-spacing: .3em; font-weight: 400; }
 .page p { margin: 0; text-indent: 1.6em; hyphens: auto; }
 .page p.noind { text-indent: 0; }
 .note { font-family: var(--font-body); font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; max-width: 68ch; margin: 0; }
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); border: 0; font: 700 14px var(--font-body); cursor: pointer; justify-self: start; }
-.btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .sources { font-size: 14px; color: var(--muted); }
 .sources a { color: var(--blue); }
 </style>
@@ -159,8 +157,9 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
         <label><input type="checkbox" id="latch"> Держать кнопку нажатой</label>
         <button class="ghost" type="button" id="mid">Переключатели в среднее положение</button>
         <button class="ghost" type="button" id="clear">Снять всё</button>
+        <button class="ghost" type="button" id="save">Сохранить программу</button>
       </div>
-      <p class="explain">Гнездо: вставить или вынуть штеккер. Пружина, затем вторая пружина: поставить перемычку. Перемычка: снять. Переключатель: щелчок по ручке или по «0» и «1».</p>
+      <p class="explain">Гнездо: вставить или вынуть штеккер. Пружина, затем вторая пружина: поставить перемычку. Перемычка: снять. Переключатель: щелчок по ручке или по «0» и «1». Свою программу можно сохранить: она останется в этом браузере.</p>
     </div>
 
     <div class="pane">
@@ -173,80 +172,67 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   </section>
 
   <section class="lower">
-    <div>
+    <div class="progs-box">
       <h2>Программы</h2>
       <div class="programs" id="programs"></div>
     </div>
-    <div>
+    <div class="tt-box">
       <h2>Что ответит машина</h2>
       <div class="tt-wrap"><table class="tt" id="tt"></table></div>
     </div>
-    <div>
+    <div class="cols-box">
       <h2>Столбцы программирования</h2>
       <ul class="exprs" id="exprs"></ul>
     </div>
-  </section>
-
-<article class="book" id="book">
-    <div class="book-head">
-      <h2>Игры из руководства 1987 года</h2>
-      <p>Правила сокращены по оригинальной брошюре. Кнопка под каждой игрой набирает программу с её рисунка: штеккеры и перемычки ставятся точно как на рисунке.</p>
-    </div>
-    <section class="page">
-      <h3>Как читать ответ</h3>
+    <article class="book" id="book">
+      <h2 id="book-h">О программе</h2>
+    <section class="page" id="ch-other">
+      <h3 id="ch-title"></h3>
+      <p class="noind" id="ch-desc"></p>
       <p>Ввод — переключатели А (4), Б (2), В (1): числа от 0 до 7. Вывод — лампы V (8), X (4), Y (2), Z (1): горящая лампа означает «1», «Да», «Правильно». Сумма чисел над горящими лампами даёт ответ от 0 до 15.</p>
       <p>Штеккер в левом гнезде замыкает звено столбца, когда переключатель стоит на «1», в правом — на «0». Столбец срабатывает, если замкнуты все три его звена. Перемычки соединяют столбцы с лампами.</p>
     </section>
-
     <section class="page" id="game1">
       <h3><span class="gn">Игра 1.</span> Какое число задумано?</h3>
       <p>Играющий задумывает число от 0 до 7 и отвечает на три вопроса. «Да» — переключатель в «1», «Нет» — в «0».</p>
       <p class="noind">А: Задуманное число чётное? (Ноль — чётное.)<br>Б: Сумма задуманного числа и следующего за ним меньше восьми?<br>В: К задуманному числу прибавьте 10 и разделите на 6. Остаток 4 или 5?</p>
       <p>Лампы X, Y, Z показывают задуманное число. Пример: для 5 все ответы «Нет», горят X и Z: 101 = 5.</p>
-      <button class="btn" type="button" data-load="game1">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game2">
       <h3><span class="gn">Игра 2.</span> Честные и лгуны</h3>
       <p>В стране живут честные (всегда говорят правду) и лгуны (всегда лгут). На вопрос «Вы честный или лгун?» житель x отвечает на непонятном языке.</p>
       <p class="noind">А: житель y: «Он сказал, что он честный» — «1», «…что он лгун» — «0».<br>Б: житель z о жителе x: «честный» — «1», «лгун» — «0».<br>В: житель z о жителе y: «честный» — «1», «лгун» — «0».</p>
       <p>Горящие X, Y, Z означают, что x, y, z честные. Пример: Дима (x) честный, Витя (y) и Коля (z) лгуны. Ответы 0, 0, 1 — горит только X.</p>
-      <button class="btn" type="button" data-load="game2">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game3">
       <h3><span class="gn">Игра 3.</span> Сумма трёх чисел</h3>
       <p>Играющий тайком бросает кубик и запоминает число. Его ответы на вопросы игры 1 фиксируются планками А, Б, В. Затем он бросает ещё раз, запоминает верхнее число и число на противоположной грани и складывает все три.</p>
       <p>Нажмите кнопку: лампы покажут сумму. Пример: 5, затем 4 и 3, сумма 12. Ответы «Нет, Нет, Нет», горят V и X: 1100 = 12.</p>
-      <button class="btn" type="button" data-load="game3">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game4">
       <h3><span class="gn">Игра 4.</span> Двенадцать — выигрыш!</h3>
       <p>Противник бросает кубик первым. Дальше игроки по очереди поворачивают кубик на одну из боковых граней и прибавляют её число к сумме. Кто первым наберёт ровно 12, тот выиграл.</p>
       <p>Введите текущую сумму (если она больше 7, вычтите 8). Лампы X, Y, Z покажут число, которое нужно поставить наверх. Если такой грани сбоку нет, берите ближайшее меньшее. Пример: выпало 2, машина говорит 2, но двойка сверху, ставим 1 (сумма 3). Противник делает 5, машина 4 (сумма 9). Противник делает 10, вводим 2, машина 2, сумма 12.</p>
-      <button class="btn" type="button" data-load="game4">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game5">
       <h3><span class="gn">Игра 5.</span> Какой предмет выбран?</h3>
       <p>Возьмите 24 спички. Игроки № 1, 2, 3 берут 1, 2 и 3 спички и тайком делят фишки А, Б, В. Затем владелец А добирает столько же, сколько взял, владелец Б — вдвое больше, владелец В — вчетверо.</p>
       <p>Введите число оставшихся спичек. Пара V X — игрок № 1, пара Y Z — игрок № 2. Код: 00 — фишка А, 01 — Б, 10 — В. Если все лампы погашены, правила нарушены. Пример: осталось 5, горят X и Y. Игрок № 1 — Б, игрок № 2 — В, игроку № 3 досталась А.</p>
-      <button class="btn" type="button" data-load="game5">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game6">
       <h3><span class="gn">Игра 6.</span> ДЛМ превосходит себя!</h3>
       <p>Всё как в игре 5, но оператор не узнаёт, сколько спичек осталось. Он задаёт одному из игроков вопросы игры 1 про это число и читает ответ по коду игры 5.</p>
-      <button class="btn" type="button" data-load="game6">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game7">
       <h3><span class="gn">Игра 7.</span> Семь спичек</h3>
       <p>Двое по очереди берут со стола одну или две спички в «общий котёл», пока стол не опустеет. Потом в том же порядке возвращают по одной-две. Выигрывает тот, кто положит седьмую. Противник ходит первым.</p>
       <p>Вводите число спичек, уже взятых (во второй половине — уже положенных). Лампы покажут, сколько их должно стать после вашего хода. Во второй половине вместо 2 вводите 111, вместо 5 — 110.</p>
-      <button class="btn" type="button" data-load="game7">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game8">
       <h3><span class="gn">Игра 8.</span> Зоологические карточки</h3>
       <p>Двенадцать карточек (по 4 птицы, зверя, насекомых) лежат тремя стопками рубашкой вверх, возле стопок в любом порядке — надписи. Берите верхнюю карточку стопки «Птицы» и кладите к нужной надписи. Затем берите карточку из той стопки, куда положили, и так далее.</p>
       <p class="noind">А: нижняя карточка у надписи «Насекомые» — насекомое?<br>Б: нижняя карточка у надписи «Звери» — зверь?<br>В: среди двух просмотренных карточек есть птица?</p>
       <p>V, X, Y — возможен полный успех. Только X — сойдутся птицы или насекомые. Только Y — птицы или звери. Только Z — птицы, вероятно, и остальные. Ничего не горит — сойдутся только птицы.</p>
-      <button class="btn" type="button" data-load="game8">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game9">
       <h3><span class="gn">Игра 9.</span> ДЛМ — экзаменатор</h3>
@@ -256,7 +242,6 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
       <b>3.</b> В каком виде идёт обработка? 100 — в двоичном коде; 101 — на языке программирования.<br>
       <b>4.</b> Почему ВМ и считает, и выполняет логические операции? 110 — она обрабатывает аналоговые данные; 111 — она построена на логических схемах, имитирующих алгебру Буля.</p>
       <p class="noind">Комментарии: 000 — Да (алгебра Буля); 001 — Нет (нужна программа); 010 — Нет (обработка цифровая); 011 — Да (ВМ работает по программе); 100 — Да (двоичный код); 101 — Нет (это внешние устройства); 110 — Нет (язык программирования нужен для общения с машиной); 111 — Да (центральный блок и внешние устройства).</p>
-      <button class="btn" type="button" data-load="game9">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game10">
       <h3><span class="gn">Игра 10.</span> Ваш характер</h3>
@@ -266,18 +251,17 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
       III. Нравится ли тебе, когда тебя хвалят? Доволен ли ты собой? Любишь ли ты говорить о себе?<br>
       IV. Доводишь ли ты начатое дело до конца? Настойчиво ли ты добиваешься своей цели? Проявляешь ли ты инициативу в работе?</p>
       <p class="note">Шестнадцать характеристик, от «0000 — замкнутый, скромный, целеустремлённый, но ленивый» до «1111 — деятельный, откровенный, но беспринципный и себялюбивый», приведены в полном тексте руководства.</p>
-      <button class="btn" type="button" data-load="game10">Набрать программу на машине ↑</button>
     </section>
     <section class="page" id="game11">
       <h3><span class="gn">Игра 11.</span> Автоматическое управление лифтом</h3>
       <p>А — направление до вызова (1 — вверх). Б — вызов вверх. В — вызов вниз.</p>
       <p>X — дверь разблокирована. Y — мотор работает. Z — лифт поедет вверх. При двух вызовах сразу лифт сохраняет прежнее направление.</p>
-      <button class="btn" type="button" data-load="game11">Набрать программу на машине ↑</button>
     </section>
     <section class="sources">
       <div>Источник: «Игрушка Детская логическая машина ДЛМ. Руководство по эксплуатации». ВНИИ «Электронстандарт», Гатчина, 1987 — <a href="DLM_rukovodstvo_1987.pdf">скачать PDF</a> (сканы, набранный текст и расшифровка рисунков программ). Логические элементы взяты из статьи <a href="https://habr.com/ru/articles/807187/" target="_blank" rel="noopener">«Криптография и другие вычисления на детских логических машинах»</a> (Хабр).</div>
     </section>
-  </article>
+    </article>
+  </section>
 </div>
 
 <script>
@@ -352,8 +336,15 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   // inp[r]: 1, 0 or null (middle position: every contact of that plank is open)
   const S = { pins: [], wires: [], inp: [null, null, null], pressed: false, latch: false, sel: null, prog: null };
 
+  // own programs: same shape as PROGRAMS, no group
+  const UKEY = 'dlm-user-programs';
+  let userProgs = [];
+  try { userProgs = JSON.parse(localStorage.getItem(UKEY)) || []; } catch (e) {}
+  const saveUser = () => { try { localStorage.setItem(UKEY, JSON.stringify(userProgs)); } catch (e) {} };
+  const allProgs = () => PROGRAMS.concat(userProgs);
+
   function loadProgram(id) {
-    const p = PROGRAMS.find(x => x.id === id);
+    const p = allProgs().find(x => x.id === id);
     S.pins = p.rows.map(r => [...r].map(ch => [ch === 'L' || ch === 'B', ch === 'R' || ch === 'B']));
     S.wires = p.wires.map(w => [...w]);
     S.inp = [null, null, null];   // the booklet: set the switches to the middle before placing pins
@@ -413,7 +404,6 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   const LSPR_Y = 182, CSPR_LOW = 268, CSPR_HIGH = 226;
   const colSprY = c => c % 2 ? CSPR_HIGH : CSPR_LOW;   // springs of columns 2, 4, 6 sit higher
   const SW_Y = ROW_Y.map(y => y + PLANK_H / 2);
-  const INK = '#2a2d33';
 
   E('defs').innerHTML = `
     <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="9"/></filter>
@@ -512,10 +502,12 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     const g = E('g', { class: 'hit', tabindex: 0, role: 'switch' });
     E('circle', { cx: 896, cy, r: 40, fill: '#efede6', stroke: '#b7b3a7', 'stroke-width': 3, class: 'focusring' }, g);
     const knob = E('g', { style: `transition: transform .18s ease; transform-origin: 896px ${cy}px` }, g);
-    E('rect', { x: 881, y: cy - 40, width: 30, height: 80, rx: 4, fill: '#f8f7f2', stroke: INK, 'stroke-width': 2 }, knob);
-    E('line', { x1: 896, y1: cy - 12, x2: 896, y2: cy + 12, stroke: INK, 'stroke-width': 2 }, knob);
-    E('text', { x: 896, y: cy - 18, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-style': 'italic', 'font-size': 18, fill: INK }, knob).textContent = name;
-    E('text', { x: 896, y: cy + 33, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-style': 'italic', 'font-size': 18, fill: INK }, knob).textContent = [4, 2, 1][r];
+    // red disc with a bar handle, as on the real machine; white marks show which way it is turned
+    E('circle', { cx: 896, cy, r: 31, fill: '#c8222c', stroke: '#8f141d', 'stroke-width': 2 }, knob);
+    E('rect', { x: 882, y: cy - 38, width: 28, height: 76, rx: 5, fill: '#d42a35', stroke: '#8f141d', 'stroke-width': 2 }, knob);
+    E('line', { x1: 896, y1: cy - 10, x2: 896, y2: cy + 10, stroke: '#fff', 'stroke-width': 2.5 }, knob);
+    E('text', { x: 896, y: cy - 17, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-weight': 700, 'font-size': 18, fill: '#fff' }, knob).textContent = name;
+    E('text', { x: 896, y: cy + 31, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-weight': 700, 'font-size': 18, fill: '#fff' }, knob).textContent = [4, 2, 1][r];
     g.addEventListener('click', () => setSwitch(r, S.inp[r] === null ? 1 : 1 - S.inp[r]));
     return { g, knob };
   });
@@ -563,8 +555,12 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   T(64, 201, '4,5 В', { 'font-size': 12 });
   I('circle', { cx: 96, cy: BUS_Y, r: 4, fill: BP.txt });
   I('circle', { cx: 150, cy: BUS_Y, r: 4, fill: BP.txt });
-  const btnBlade = I('line', { x1: 96, y1: BUS_Y, x2: 146, y2: BUS_Y - 24, stroke: BP.txt, 'stroke-width': 3, 'stroke-linecap': 'round' });
-  T(123, BUS_Y - 28, 'кнопка', { 'text-anchor': 'middle', 'font-size': 12 });
+  // push button, normally open: a bridge over the two contacts, a stem and a pusher; pressing drops the bridge
+  const btnBlade = I('g', { style: 'transition: transform .12s ease' });
+  I('line', { x1: 90, y1: BUS_Y - 10, x2: 156, y2: BUS_Y - 10, stroke: BP.txt, 'stroke-width': 3, 'stroke-linecap': 'round' }, btnBlade);
+  I('line', { x1: 123, y1: BUS_Y - 10, x2: 123, y2: BUS_Y - 28, stroke: BP.txt, 'stroke-width': 2 }, btnBlade);
+  I('line', { x1: 113, y1: BUS_Y - 28, x2: 133, y2: BUS_Y - 28, stroke: BP.txt, 'stroke-width': 3, 'stroke-linecap': 'round' }, btnBlade);
+  T(123, BUS_Y - 36, 'кнопка', { 'text-anchor': 'middle', 'font-size': 12 });
   T(IX(6) + 8, BUS_Y + 5, 'шина +', { 'font-size': 12 });
   T(ILX(3) + 8, NEG_Y + 5, 'шина −', { 'font-size': 12 });
 
@@ -673,22 +669,65 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   document.getElementById('mid').addEventListener('click', () => { S.inp = [null, null, null]; update(); save(); });
   document.getElementById('clear').addEventListener('click', () => loadProgram('empty'));
 
+  // ---- own programs, kept in this browser ----
+  document.getElementById('save').addEventListener('click', () => {
+    const cur = userProgs.find(p => p.id === S.prog);
+    const name = prompt('Название программы', cur ? cur.t : 'Моя программа')?.trim();
+    if (!name) return;
+    const p = {
+      id: 'u' + Date.now(), t: name, src: '', d: `Штеккеров: ${pinCount()}, перемычек: ${S.wires.length}.`,
+      rows: S.pins.map(row => row.map(([l, r]) => l && r ? 'B' : l ? 'L' : r ? 'R' : '.').join('')), wires: S.wires.map(w => [...w])
+    };
+    userProgs = userProgs.filter(x => x.t !== name).concat(p);   // the same name overwrites
+    saveUser(); S.prog = p.id; renderPrograms(); update(); save();
+  });
+  function deleteUser(p) {
+    if (!confirm(`Удалить программу «${p.t}»?`)) return;
+    userProgs = userProgs.filter(x => x !== p);
+    if (S.prog === p.id) S.prog = null;
+    saveUser(); renderPrograms(); update(); save();
+  }
+
   // ---- lower panels ----
   const progBox = document.getElementById('programs');
-  let lastGroup = null;
-  const progBtns = PROGRAMS.map(p => {
-    if (p.group !== lastGroup) { lastGroup = p.group; const d = document.createElement('div'); d.className = 'group-label'; d.textContent = p.group; progBox.appendChild(d); }
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'prog'; b.id = 'prog-' + p.id;
-    b.innerHTML = `<span class="t"></span><span class="src"></span><span class="d"></span>`;
-    b.querySelector('.t').textContent = p.t; b.querySelector('.src').textContent = p.src; b.querySelector('.d').textContent = p.d;
-    b.addEventListener('click', () => loadProgram(p.id));
-    progBox.appendChild(b);
-    return [p.id, b];
-  });
-  document.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => {
-    loadProgram(b.dataset.load); svg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }));
+  let progBtns = [];
+  function renderPrograms() {
+    progBox.innerHTML = '';
+    let lastGroup = null;
+    progBtns = allProgs().map(p => {
+      const group = p.group || 'Мои программы';
+      if (group !== lastGroup) { lastGroup = group; const d = document.createElement('div'); d.className = 'group-label'; d.textContent = group; progBox.appendChild(d); }
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'prog';
+      b.innerHTML = `<span class="t"></span><span class="src"></span><span class="d"></span>`;
+      b.querySelector('.t').textContent = p.t; b.querySelector('.src').textContent = p.src; b.querySelector('.d').textContent = p.d;
+      b.addEventListener('click', () => loadProgram(p.id));
+      if (p.group) progBox.appendChild(b);
+      else {
+        const row = document.createElement('div'), del = document.createElement('button');
+        row.className = 'prog-row';
+        del.type = 'button'; del.className = 'ghost'; del.textContent = '×'; del.title = 'Удалить';
+        del.setAttribute('aria-label', `Удалить программу «${p.t}»`);
+        del.addEventListener('click', () => deleteUser(p));
+        row.append(b, del); progBox.appendChild(row);
+      }
+      return [p.id, b];
+    });
+  }
+  renderPrograms();
+
+  // the chapter of the booklet for the chosen program, or a note on it
+  const book = document.getElementById('book'), chOther = document.getElementById('ch-other');
+  const OWN_HINT = 'Программа набрана вручную. Поставьте переключатели в среднее положение и щёлкайте по гнёздам, чтобы ставить и снимать штеккеры, и по двум пружинам подряд, чтобы соединить их перемычкой. Готовую программу сохраните кнопкой «Сохранить программу»: она останется в этом браузере.';
+  function renderChapter() {
+    const prog = allProgs().find(p => p.id === S.prog);
+    const chap = prog && book.querySelector('section.page#' + CSS.escape(prog.id));
+    book.querySelectorAll('section.page').forEach(s => { s.hidden = s !== (chap || chOther); });
+    document.getElementById('book-h').textContent = chap ? 'Из руководства 1987 года' : 'О программе';
+    if (chap) return;
+    document.getElementById('ch-title').textContent = prog ? prog.t : 'Своя программа';
+    document.getElementById('ch-desc').textContent = prog ? prog.d : OWN_HINT;
+  }
 
   const tt = document.getElementById('tt');
   function renderTable() {
@@ -792,8 +831,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     renderFrontWires();
 
     // inside view
-    btnBlade.setAttribute('x2', power ? 150 : 146);
-    btnBlade.setAttribute('y2', power ? BUS_Y : BUS_Y - 24);
+    btnBlade.style.transform = `translateY(${power ? 7 : 0}px)`;
     const supply = !power ? 'dead' : anyFlow ? 'flow' : 'live';
     setCls(segBatPos, supply); setCls(segBus, supply);
     setCls(segBatNeg, anyFlow ? 'flow' : 'dead');
@@ -828,6 +866,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
 
     renderTable();
     renderExprs();
+    renderChapter();
     progBtns.forEach(([id, b]) => b.setAttribute('aria-pressed', S.prog === id ? 'true' : 'false'));
 
     const n = pinCount(), chip = document.getElementById('pincount');
