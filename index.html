@@ -158,7 +158,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
 .cards { display: flex; flex-wrap: wrap; gap: 4px; min-height: 56px; }
 .cards.down .card + .card { margin-left: -58px; }
 .card { width: 64px; height: 56px; background: #fff; border: 1px solid #b9c3d6; border-radius: 4px; display: grid; place-items: center; align-content: center; color: #23409a; font: 700 10px var(--font-body); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); flex: none; }
-.card svg { width: 42px; height: 30px; fill: none; stroke: #23409a; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.card img { max-width: 60px; max-height: 52px; border-radius: 3px; }
 .card.label { width: auto; height: 30px; padding: 0 8px; font-size: 11px; letter-spacing: .05em; }
 .matches { display: flex; flex-wrap: wrap; gap: 3px; min-height: 40px; align-items: end; }
 .match { width: 8px; height: 40px; }
@@ -807,20 +807,18 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   }
 
   // Game 8: four birds, four beasts, four insects; the labels lie by the piles in any order.
+  // Card pictures are cut from a photo of a complete original set (cards/*.jpg).
   const KINDS = {
-    P: { label: 'ПТИЦЫ', names: ['гусь', 'утка', 'сова', 'воробей'],
-      icon: '<ellipse cx="18" cy="17" rx="10" ry="6"/><circle cx="29" cy="10" r="3.5"/><path d="M26 13 24 15M32 9.5 37 11 32 12.5M10 15Q18 10 24 16M8 17 3 13 4 20ZM16 23 15 28M21 23 22 28"/>' },
-    Z: { label: 'ЗВЕРИ', names: ['заяц', 'лиса', 'медведь', 'ёж'],
-      icon: '<ellipse cx="17" cy="18" rx="10" ry="6"/><circle cx="29" cy="13" r="4"/><path d="M28 9 26 2M31 9 34 2M11 23 9 28M23 23 25 28"/><circle cx="6" cy="17" r="2"/>' },
-    N: { label: 'НАСЕКОМЫЕ', names: ['жук', 'бабочка', 'стрекоза', 'муравей'],
-      icon: '<path d="M20 8V25M20 12C11 2 4 9 10 15 4 20 12 26 20 18M20 12C29 2 36 9 30 15 36 20 28 26 20 18M20 8 16 3M20 8 24 3"/>' }
+    P: { label: 'ПТИЦЫ', names: { голубь: 'golub', гусь: 'gus', дятел: 'dyatel', филин: 'filin' } },
+    Z: { label: 'ЗВЕРИ', names: { олень: 'olen', лиса: 'lisa', белка: 'belka', кабан: 'kaban' } },
+    N: { label: 'НАСЕКОМЫЕ', names: { кузнечик: 'kuznechik', бабочка: 'babochka', стрекоза: 'strekoza', 'жук-олень': 'zhuk-olen' } }
   };
-  const cardHtml = c => `<div class="card" title="${c.name}"><svg viewBox="0 0 40 30" aria-hidden="true">${KINDS[c.k].icon}</svg>${c.name}</div>`;
+  const cardHtml = c => `<div class="card" title="${c.name}"><img src="cards/${KINDS[c.k].names[c.name]}.jpg" alt="${c.name}"></div>`;
 
   function cardsDesk() {
     let order, piles, placed, cur, shown, done;
     const deal = () => {
-      const deck = Object.keys(KINDS).flatMap(k => KINDS[k].names.map(name => ({ k, name })));
+      const deck = Object.keys(KINDS).flatMap(k => Object.keys(KINDS[k].names).map(name => ({ k, name })));
       shuffle(deck);
       order = shuffle(Object.keys(KINDS));
       piles = { P: deck.slice(0, 4), Z: deck.slice(4, 8), N: deck.slice(8) };   // index 0 is the top card
