@@ -160,6 +160,15 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
 .card { width: 64px; height: 56px; background: #fff; border: 1px solid #b9c3d6; border-radius: 4px; display: grid; place-items: center; align-content: center; color: #23409a; font: 700 10px var(--font-body); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); flex: none; }
 .card svg { width: 42px; height: 30px; fill: none; stroke: #23409a; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .card.label { width: auto; height: 30px; padding: 0 8px; font-size: 11px; letter-spacing: .05em; }
+.matches { display: flex; flex-wrap: wrap; gap: 3px; min-height: 40px; align-items: end; }
+.match { width: 8px; height: 40px; }
+.match rect { fill: #e8c48a; stroke: #b08a4e; stroke-width: .6; }
+.match ellipse { fill: #b3261e; }
+.players, .piles2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; width: 100%; }
+.player { display: grid; gap: 6px; align-content: start; }
+.player-top { display: flex; gap: 8px; align-items: center; min-height: 34px; }
+.tok { width: 32px; height: 32px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font: 700 15px var(--font-body); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .25); }
+.tok-0 { background: #c8222c; } .tok-1 { background: #23409a; } .tok-2 { background: #e0a800; } .tok-x { background: #8a8f99; }
 .card.back { background: repeating-linear-gradient(45deg, #23409a 0 4px, #3552ad 4px 8px); border-color: #1b2f73; }
 </style>
 
@@ -812,8 +821,8 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     let order, piles, placed, cur, shown, done;
     const deal = () => {
       const deck = Object.keys(KINDS).flatMap(k => KINDS[k].names.map(name => ({ k, name })));
-      for (let i = deck.length - 1; i > 0; i--) { const j = rnd(i + 1); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-      order = Object.keys(KINDS).sort(() => Math.random() - .5);
+      shuffle(deck);
+      order = shuffle(Object.keys(KINDS));
       piles = { P: deck.slice(0, 4), Z: deck.slice(4, 8), N: deck.slice(8) };   // index 0 is the top card
       placed = { P: [], Z: [], N: [] }; cur = 'P'; shown = false; done = false;
     };
@@ -856,10 +865,88 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     deal(); draw();
   }
 
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const MATCH = '<svg class="match" viewBox="0 0 8 40" aria-hidden="true"><rect x="2.6" y="8" width="2.8" height="31" rx="1"/><ellipse cx="4" cy="7" rx="3.3" ry="5"/></svg>';
+  const matchesHtml = n => `<div class="matches" role="img" aria-label="Спичек: ${n}">${MATCH.repeat(n)}</div>`;
+  const MULT = { А: 1, Б: 2, В: 4 };   // the multiplier printed on the back of each chip
+  const chipHtml = c => c ? `<span class="tok tok-${'АБВ'.indexOf(c)}" title="На обороте: ×${MULT[c]}">${c}</span>` : '<span class="tok tok-x" title="Фишка спрятана">?</span>';
+
+  // Games 5 and 6: 24 matches, three players and three chips, step by step as in the booklet.
+  function chipsDesk() {
+    let stage, owner, took, table;   // owner[i]: the chip of player i + 1
+    const STEPS = ['Игроки берут 1, 2 и 3 спички', 'Игроки тайком делят фишки', 'Игроки добирают спички по фишкам', 'Открыть фишки'];
+    const reset = () => { stage = 0; owner = null; took = [0, 0, 0]; table = 24; };
+    const draw = () => {
+      const open = stage === 4;
+      deskBody.innerHTML = `<div class="players">${[0, 1, 2].map(i => `<div class="player">
+          <span class="cap">Игрок № ${i + 1}</span>
+          <div class="player-top">${owner ? chipHtml(open && owner[i]) : ''}<span class="cap">${took[i] ? `спичек: ${took[i]}` : ''}</span></div>
+          ${matchesHtml(took[i])}
+        </div>`).join('')}</div>
+        <div><span class="cap">На столе</span>${matchesHtml(table)}</div>
+        <p class="desk-note">${stage < 3 ? 'Оператор отворачивается, пока игроки берут спички и делят фишки.' :
+          !open ? 'Теперь оператор считает спички на столе и вводит их число в машину (в игре 6 — ответы игрока на вопросы игры 1 про это число).' :
+          [0, 1, 2].map(i => `игрок № ${i + 1} — ${owner[i]}`).join(', ') + '. Сверьте с лампами.'}</p>
+        <div class="desk-btns">
+          ${open ? '' : `<button type="button" class="ghost" data-act="next">${STEPS[stage]}</button>`}
+          <button type="button" class="ghost" data-act="new">Новая игра</button>
+        </div>`;
+    };
+    deskBody.onclick = e => {
+      const act = e.target.closest('button')?.dataset.act;
+      if (act === 'new') reset();
+      else if (act === 'next') {
+        if (stage === 0) { took = [1, 2, 3]; table -= 6; }
+        else if (stage === 1) owner = shuffle(['А', 'Б', 'В']);
+        else if (stage === 2) owner.forEach((c, i) => { const n = (i + 1) * MULT[c]; took[i] += n; table -= n; });
+        stage++;
+      } else return;
+      draw();
+    };
+    reset(); draw();
+  }
+
+  // Game 7: seven matches go into the common pot one or two at a time, then back in the same order;
+  // whoever puts down the seventh wins. The opponent starts; the turns keep alternating into the second half.
+  function sevenDesk() {
+    let half, table, pot, turn, log, winner;   // turn 0: the opponent, 1: you
+    const reset = () => { half = 1; table = 7; pot = 0; turn = 0; log = []; winner = null; };
+    const draw = () => {
+      const from = half === 1 ? table : pot, count = half === 1 ? pot : table;
+      const input = half === 2 && count === 2 ? '111' : half === 2 && count === 5 ? '110' : count.toString(2).padStart(3, '0');
+      deskBody.innerHTML = `<div class="piles2">
+          <div><span class="cap">На столе: ${table}</span>${matchesHtml(table)}</div>
+          <div><span class="cap">Общий котёл: ${pot}</span>${matchesHtml(pot)}</div>
+        </div>
+        <p class="desk-note">${winner !== null ? `Седьмую спичку положил${winner ? 'и вы. Победа!' : ' противник.'}` :
+          `${half === 1 ? 'Первая половина: берут со стола в котёл.' : 'Вторая половина: возвращают из котла на стол.'} ${turn ? 'Ваш ход' : 'Ходит противник'}.` +
+          (turn ? ` ${half === 1 ? 'Взято со стола' : 'Положено на стол'}: ${count}, в машину вводится ${input}.` : '')}
+          <br><span class="cap">${log.join(' → ')}</span></p>
+        <div class="desk-btns">
+          ${winner !== null ? '' : [1, 2].map(n => `<button type="button" class="ghost" data-n="${n}"${n > from ? ' disabled' : ''}>${turn ? 'Вы' : 'Противник'}: ${half === 1 ? 'взять' : 'положить'} ${n}</button>`).join('')}
+          <button type="button" class="ghost" data-act="new">Новая партия</button>
+        </div>`;
+    };
+    deskBody.onclick = e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.act === 'new') reset();
+      else if (b.dataset.n) {
+        const n = +b.dataset.n;
+        if (half === 1) { table -= n; pot += n; } else { pot -= n; table += n; }
+        log.push(`${turn ? 'вы' : 'противник'} ${n}`);
+        if (half === 2 && table === 7) winner = turn;
+        else { if (half === 1 && table === 0) { half = 2; log.push('|'); } turn = 1 - turn; }
+      } else return;
+      draw();
+    };
+    reset(); draw();
+  }
+
   function renderDesk() {
     if (deskFor === S.prog) return;
     deskFor = S.prog;
-    const make = { game3: () => dieDesk(false), game4: () => dieDesk(true), game8: cardsDesk }[S.prog];
+    const make = { game3: () => dieDesk(false), game4: () => dieDesk(true), game5: chipsDesk, game6: chipsDesk, game7: sevenDesk, game8: cardsDesk }[S.prog];
     desk.hidden = !make;
     if (make) make(); else { deskBody.innerHTML = ''; deskBody.onclick = null; }
   }

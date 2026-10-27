@@ -119,6 +119,34 @@ all(n => {
   expect('game8', n, want, `раскладка кончается так: ${o.join(' или ')}`, true);
 });
 
+// Game 7: seven matches into the pot one or two at a time, then back to the table; whoever puts down
+// the seventh wins; the opponent starts and the turns alternate throughout. The machine gets the count
+// taken (first half) or put back (second half, with 2 entered as 111 and 5 as 110) and shows the count
+// to reach. Against every opponent the player following it must always win.
+const bad7 = new Set();
+const play7 = (half, table, myTurn, path) => {
+  if (!myTurn) {
+    for (const n of [1, 2]) {
+      const src = half === 1 ? table : 7 - table;
+      if (n > src) continue;
+      const t = half === 1 ? table - n : table + n;
+      if (half === 2 && t === 7) { bad7.add(path + ` противник ${n} и выигрывает`); continue; }
+      play7(half === 1 && t === 0 ? 2 : half, t, true, path + ` противник ${n};`);
+    }
+    return;
+  }
+  const count = half === 1 ? 7 - table : table;
+  const input = half === 2 && count === 2 ? 0b111 : half === 2 && count === 5 ? 0b110 : count;
+  const n = run(P.game7, input) - count;
+  const src = half === 1 ? table : 7 - table;
+  if (n < 1 || n > 2 || n > src) { bad7.add(path + ` машина советует ${run(P.game7, input)} при ${count}`); return; }
+  const t = half === 1 ? table - n : table + n;
+  if (half === 2 && t === 7) return;   // the player puts down the seventh match
+  play7(half === 1 && t === 0 ? 2 : half, t, false, path + ` вы ${n};`);
+};
+play7(1, 7, false, '');
+for (const s of bad7) { failed++; console.log('ОШИБКА game7:' + s); }
+
 // Logic elements from the Habr article.
 all(n => {
   const A = n >> 2 & 1, B = n >> 1 & 1, C = n & 1;
