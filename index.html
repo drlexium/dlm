@@ -133,6 +133,9 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
 .note { font-family: var(--font-body); font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; max-width: 68ch; margin: 0; }
 .sources { font-size: 14px; color: var(--muted); }
 .sources a { color: var(--blue); }
+.site-top { margin-bottom: -24px; font-size: 14px; }
+.site-foot { border-top: 1px solid var(--line); padding-top: 16px; font-size: 14px; color: var(--muted); }
+.site-top a, .site-foot a { color: var(--blue); }
 
 /* the table: the die and the zoological cards, drawn after the photos of the kit */
 .desk { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
@@ -175,6 +178,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
 </head>
 <body>
 <div class="wrap">
+  <nav class="site-top"><a href="https://www.lexium.ru/proekty/">← Проекты на lexium.ru</a></nav>
   <header>
     <div class="logo" aria-hidden="true">длм</div>
     <div>
@@ -304,6 +308,9 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     </section>
     </article>
   </section>
+  <footer class="site-foot">
+    © 2026 Alex Cube · <a href="https://www.lexium.ru/">lexium.ru</a> · <a href="https://www.lexium.ru/proekty/">другие проекты</a> · <a href="https://github.com/drlexium/dlm" target="_blank" rel="noopener">исходники на GitHub</a> (MIT)
+  </footer>
 </div>
 
 <script>
