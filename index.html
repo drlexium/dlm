@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Детская логическая машина</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<style>
+/* Layout: the machine as drawn in the 1987 booklet (left) and its insides as a live circuit (right); programs and answer table below; the booklet's games at the end. */
+:root {
+  --bg: #e8ecf2;
+  --surface: #f7f8fb;
+  --ink: #18223b;
+  --muted: #5a6479;
+  --line: #c9d0dc;
+  --accent: #c8222c;
+  --accent-ink: #ffffff;
+  --blue: #23409a;
+  --hl: #fde9a8;
+  --font-display: "Rubik", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-body: "PT Sans", "Segoe UI", system-ui, sans-serif;
+  --font-book: "PT Serif", Georgia, "Times New Roman", serif;
+  --font-mono: "PT Mono", ui-monospace, Consolas, monospace;
+  /* the inside view is a fixed blueprint, the same in both themes */
+  --bp-bg: #0f2348; --bp-grid: #1b3463; --bp-ink: #9fb6e6; --bp-dim: #50678f; --bp-live: #ffd166; --bp-flow: #ff8c42;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1730; --surface: #17223f; --ink: #e6eaf4; --muted: #9ba6c0; --line: #2c3a5e;
+    --accent: #ff5a5f; --accent-ink: #1a0b0c; --blue: #8fa8ff; --hl: #4a3f17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1730; --surface: #17223f; --ink: #e6eaf4; --muted: #9ba6c0; --line: #2c3a5e;
+  --accent: #ff5a5f; --accent-ink: #1a0b0c; --blue: #8fa8ff; --hl: #4a3f17;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 36px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 22px; }
+.logo { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 22px; box-shadow: 0 0 0 4px var(--bg), 0 0 0 7px var(--accent); flex: none; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 4.4vw, 46px); line-height: 1.02; margin: 0; text-transform: lowercase; color: var(--blue); text-wrap: balance; }
+.sub { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 1100px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.pane { display: grid; gap: 10px; min-width: 0; }
+.pane-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.pane h2, .lower h2, .book h2 { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+svg.view { width: 100%; height: auto; display: block; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+svg#dlm { filter: drop-shadow(0 14px 22px rgba(10, 20, 50, .22)); }
+svg#inside { border-radius: 14px; background: var(--bp-bg); }
+svg .hit { cursor: pointer; }
+svg .hit:focus { outline: none; }
+svg .hit:focus-visible .focusring { stroke: var(--blue); stroke-width: 4; }
+.status { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 15px; min-height: 2.4em; }
+.readout { font-family: var(--font-mono); font-size: 17px; padding: 6px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.readout b { color: var(--accent); }
+.hint { color: var(--muted); }
+.warn { color: var(--accent); font-weight: 700; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: 15px; }
+.controls label { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.chip { font-family: var(--font-mono); font-size: 14px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-variant-numeric: tabular-nums; }
+.chip.over { border-color: var(--accent); color: var(--accent); }
+.ghost { font: inherit; font-size: 14px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.ghost:hover { border-color: var(--blue); }
+.ghost:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 26px; height: 0; border-top: 4px solid; }
+.legend .l-flow { border-color: var(--bp-flow); border-top-style: dashed; }
+.legend .l-live { border-color: var(--bp-live); border-top-width: 2px; }
+.legend .l-dead { border-color: var(--bp-dim); border-top-width: 2px; }
+.explain { font-size: 14px; color: var(--muted); margin: 0; max-width: 75ch; }
+
+#inside .w { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+#inside .dead { stroke: var(--bp-dim); stroke-width: 2; }
+#inside .live { stroke: var(--bp-live); stroke-width: 2.5; }
+#inside .flow { stroke: var(--bp-flow); stroke-width: 4.5; stroke-dasharray: 11 7; animation: run .55s linear infinite; }
+@keyframes run { to { stroke-dashoffset: -18; } }
+@media (prefers-reduced-motion: reduce) { #inside .flow { animation: none; stroke-dasharray: none; } * { transition: none !important; } }
+
+.lower { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 1100px) { .lower { grid-template-columns: minmax(0, 1fr); } }
+.lower > div { display: grid; gap: 10px; min-width: 0; }
+.programs { display: grid; gap: 6px; }
+.prog { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; width: 100%; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.prog:hover { border-color: var(--blue); }
+.prog:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.prog[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.prog .t { font-weight: 700; }
+.prog .src { font-size: 12px; color: var(--muted); align-self: center; white-space: nowrap; }
+.prog .d { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.group-label { font-size: 12px; color: var(--muted); margin: 8px 0 2px; }
+.tt-wrap { overflow-x: auto; }
+table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 14px; width: 100%; font-variant-numeric: tabular-nums; }
+.tt th, .tt td { padding: 4px 8px; text-align: center; border-bottom: 1px solid var(--line); }
+.tt th { font-weight: 400; color: var(--muted); font-size: 12px; }
+.tt tr.cur td { background: var(--hl); }
+.tt tbody tr { cursor: pointer; }
+.tt .sep { border-left: 1px solid var(--line); }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--muted); vertical-align: -1px; }
+.dot.on.red { background: #ff4b3e; border-color: #ff4b3e; box-shadow: 0 0 6px #ff4b3e; }
+.dot.on.green { background: #3fdc6a; border-color: #2bb552; box-shadow: 0 0 6px #3fdc6a; }
+.exprs { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 14px; display: grid; gap: 3px; }
+.exprs li { display: grid; grid-template-columns: 2.2em minmax(0, 1fr) auto; gap: 8px; }
+.exprs .n, .exprs .to { color: var(--muted); }
+.exprs .dead { color: var(--muted); font-style: italic; font-family: var(--font-body); }
+
+.book { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding-block: 36px 40px; padding-inline: clamp(18px, 5vw, 64px); display: grid; gap: 34px; }
+.book-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; align-items: baseline; }
+.book-head p { margin: 0; color: var(--muted); max-width: 60ch; }
+.page { font-family: var(--font-book); max-width: 68ch; display: grid; gap: 12px; }
+.page h3 { font-family: var(--font-book); font-size: 20px; margin: 0; letter-spacing: .04em; }
+.page h3 .gn { letter-spacing: .3em; font-weight: 400; }
+.page p { margin: 0; text-indent: 1.6em; hyphens: auto; }
+.page p.noind { text-indent: 0; }
+.note { font-family: var(--font-body); font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; max-width: 68ch; margin: 0; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); border: 0; font: 700 14px var(--font-body); cursor: pointer; justify-self: start; }
+.btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.sources { font-size: 14px; color: var(--muted); }
+.sources a { color: var(--blue); }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">длм</div>
+    <div>
+      <h1>детская логическая машина</h1>
+      <p class="sub">Советская программируемая игрушка 1984–1989 годов, в которой нет ни транзистора, ни реле: только планки, штеккеры, пружинные контакты и лампочки. Справа видно, как поворот переключателя двигает планку, штеккеры нажимают контакты и куда идёт ток. Все 11 игр из руководства 1987 года набираются одной кнопкой.</p>
+    </div>
+  </header>
+
+  <section class="bench">
+    <div class="pane">
+      <div class="pane-head"><h2>Пульт</h2><span id="pincount" class="chip">штеккеров: 0 / 30</span></div>
+      <svg id="dlm" class="view" viewBox="0 0 1000 700" role="application" aria-label="Пульт Детской логической машины"></svg>
+      <div class="status" aria-live="polite">
+        <span id="readout" class="readout" hidden></span>
+        <span id="hint" class="hint"></span>
+      </div>
+      <div class="controls">
+        <label><input type="checkbox" id="latch"> Держать кнопку нажатой</label>
+        <button class="ghost" type="button" id="mid">Переключатели в среднее положение</button>
+        <button class="ghost" type="button" id="clear">Снять всё</button>
+      </div>
+      <p class="explain">Гнездо: вставить или вынуть штеккер. Пружина, затем вторая пружина: поставить перемычку. Перемычка: снять. Переключатель: щелчок по ручке или по «0» и «1».</p>
+    </div>
+
+    <div class="pane">
+      <div class="pane-head"><h2>Вид изнутри</h2>
+        <div class="legend"><span><i class="l-flow"></i>ток</span><span><i class="l-live"></i>напряжение, тока нет</span><span><i class="l-dead"></i>обесточено</span></div>
+      </div>
+      <svg id="inside" class="view" viewBox="0 0 1000 720" role="img" aria-label="Электрическая схема ДЛМ с текущим состоянием контактов"></svg>
+      <p class="explain">Переключатель — это кривошип: поворот сдвигает планку. Под каждым столбцом, под каждой планкой, стоит пружинящая пластина, по бокам от неё два неподвижных контакта. При «1» планка уходит вправо, и штеккер из левого гнезда отгибает пластину на правый контакт. При «0» штеккер из правого гнезда отгибает её на левый. В среднем положении пластины никто не касается. Каждый столбец — три такие пластины подряд, по одной под каждой планкой, то есть логическое И. Перемычки собирают несколько столбцов на одну лампу — это ИЛИ. Вот и весь «процессор»: программа — это расстановка штеккеров и перемычек. <em>Механизм под крышкой — реконструкция: в брошюре его нет, фотографий тоже не нашлось.</em></p>
+    </div>
+  </section>
+
+  <section class="lower">
+    <div>
+      <h2>Программы</h2>
+      <div class="programs" id="programs"></div>
+    </div>
+    <div>
+      <h2>Что ответит машина</h2>
+      <div class="tt-wrap"><table class="tt" id="tt"></table></div>
+    </div>
+    <div>
+      <h2>Столбцы программирования</h2>
+      <ul class="exprs" id="exprs"></ul>
+    </div>
+  </section>
+
+<article class="book" id="book">
+    <div class="book-head">
+      <h2>Игры из руководства 1987 года</h2>
+      <p>Правила сокращены по оригинальной брошюре. Кнопка под каждой игрой набирает программу с её рисунка: штеккеры и перемычки ставятся точно как на рисунке.</p>
+    </div>
+    <section class="page">
+      <h3>Как читать ответ</h3>
+      <p>Ввод — переключатели А (4), Б (2), В (1): числа от 0 до 7. Вывод — лампы V (8), X (4), Y (2), Z (1): горящая лампа означает «1», «Да», «Правильно». Сумма чисел над горящими лампами даёт ответ от 0 до 15.</p>
+      <p>Штеккер в левом гнезде замыкает звено столбца, когда переключатель стоит на «1», в правом — на «0». Столбец срабатывает, если замкнуты все три его звена. Перемычки соединяют столбцы с лампами.</p>
+    </section>
+
+    <section class="page" id="game1">
+      <h3><span class="gn">Игра 1.</span> Какое число задумано?</h3>
+      <p>Играющий задумывает число от 0 до 7 и отвечает на три вопроса. «Да» — переключатель в «1», «Нет» — в «0».</p>
+      <p class="noind">А: Задуманное число чётное? (Ноль — чётное.)<br>Б: Сумма задуманного числа и следующего за ним меньше восьми?<br>В: К задуманному числу прибавьте 10 и разделите на 6. Остаток 4 или 5?</p>
+      <p>Лампы X, Y, Z показывают задуманное число. Пример: для 5 все ответы «Нет», горят X и Z: 101 = 5.</p>
+      <button class="btn" type="button" data-load="game1">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game2">
+      <h3><span class="gn">Игра 2.</span> Честные и лгуны</h3>
+      <p>В стране живут честные (всегда говорят правду) и лгуны (всегда лгут). На вопрос «Вы честный или лгун?» житель x отвечает на непонятном языке.</p>
+      <p class="noind">А: житель y: «Он сказал, что он честный» — «1», «…что он лгун» — «0».<br>Б: житель z о жителе x: «честный» — «1», «лгун» — «0».<br>В: житель z о жителе y: «честный» — «1», «лгун» — «0».</p>
+      <p>Горящие X, Y, Z означают, что x, y, z честные. Пример: Дима (x) честный, Витя (y) и Коля (z) лгуны. Ответы 0, 0, 1 — горит только X.</p>
+      <button class="btn" type="button" data-load="game2">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game3">
+      <h3><span class="gn">Игра 3.</span> Сумма трёх чисел</h3>
+      <p>Играющий тайком бросает кубик и запоминает число. Его ответы на вопросы игры 1 фиксируются планками А, Б, В. Затем он бросает ещё раз, запоминает верхнее число и число на противоположной грани и складывает все три.</p>
+      <p>Нажмите кнопку: лампы покажут сумму. Пример: 5, затем 4 и 3, сумма 12. Ответы «Нет, Нет, Нет», горят V и X: 1100 = 12.</p>
+      <button class="btn" type="button" data-load="game3">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game4">
+      <h3><span class="gn">Игра 4.</span> Двенадцать — выигрыш!</h3>
+      <p>Противник бросает кубик первым. Дальше игроки по очереди поворачивают кубик на одну из боковых граней и прибавляют её число к сумме. Кто первым наберёт ровно 12, тот выиграл.</p>
+      <p>Введите текущую сумму (если она больше 7, вычтите 8). Лампы X, Y, Z покажут число, которое нужно поставить наверх. Если такой грани сбоку нет, берите ближайшее меньшее. Пример: выпало 2, машина говорит 2, но двойка сверху, ставим 1 (сумма 3). Противник делает 5, машина 4 (сумма 9). Противник делает 10, вводим 2, машина 2, сумма 12.</p>
+      <button class="btn" type="button" data-load="game4">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game5">
+      <h3><span class="gn">Игра 5.</span> Какой предмет выбран?</h3>
+      <p>Возьмите 24 спички. Игроки № 1, 2, 3 берут 1, 2 и 3 спички и тайком делят фишки А, Б, В. Затем владелец А добирает столько же, сколько взял, владелец Б — вдвое больше, владелец В — вчетверо.</p>
+      <p>Введите число оставшихся спичек. Пара V X — игрок № 1, пара Y Z — игрок № 2. Код: 00 — фишка А, 01 — Б, 10 — В. Если все лампы погашены, правила нарушены. Пример: осталось 5, горят X и Y. Игрок № 1 — Б, игрок № 2 — В, игроку № 3 досталась А.</p>
+      <button class="btn" type="button" data-load="game5">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game6">
+      <h3><span class="gn">Игра 6.</span> ДЛМ превосходит себя!</h3>
+      <p>Всё как в игре 5, но оператор не узнаёт, сколько спичек осталось. Он задаёт одному из игроков вопросы игры 1 про это число и читает ответ по коду игры 5.</p>
+      <button class="btn" type="button" data-load="game6">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game7">
+      <h3><span class="gn">Игра 7.</span> Семь спичек</h3>
+      <p>Двое по очереди берут со стола одну или две спички в «общий котёл», пока стол не опустеет. Потом в том же порядке возвращают по одной-две. Выигрывает тот, кто положит седьмую. Противник ходит первым.</p>
+      <p>Вводите число спичек, уже взятых (во второй половине — уже положенных). Лампы покажут, сколько их должно стать после вашего хода. Во второй половине вместо 2 вводите 111, вместо 5 — 110.</p>
+      <button class="btn" type="button" data-load="game7">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game8">
+      <h3><span class="gn">Игра 8.</span> Зоологические карточки</h3>
+      <p>Двенадцать карточек (по 4 птицы, зверя, насекомых) лежат тремя стопками рубашкой вверх, возле стопок в любом порядке — надписи. Берите верхнюю карточку стопки «Птицы» и кладите к нужной надписи. Затем берите карточку из той стопки, куда положили, и так далее.</p>
+      <p class="noind">А: нижняя карточка у надписи «Насекомые» — насекомое?<br>Б: нижняя карточка у надписи «Звери» — зверь?<br>В: среди двух просмотренных карточек есть птица?</p>
+      <p>V, X, Y — возможен полный успех. Только X — сойдутся птицы или насекомые. Только Y — птицы или звери. Только Z — птицы, вероятно, и остальные. Ничего не горит — сойдутся только птицы.</p>
+      <button class="btn" type="button" data-load="game8">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game9">
+      <h3><span class="gn">Игра 9.</span> ДЛМ — экзаменатор</h3>
+      <p>Введите номер выбранного ответа. Лампы X, Y, Z покажут номер комментария.</p>
+      <p class="noind"><b>1.</b> Основные блоки ВМ? 000 — пульт, считыватель перфокарт, магнитофон, печатающее устройство; 001 — центральный блок (память и обработка), входные и выходные устройства.<br>
+      <b>2.</b> Как ВМ обрабатывает информацию? 010 — нужна программа вычислений; 011 — центральный блок сам решает любую задачу.<br>
+      <b>3.</b> В каком виде идёт обработка? 100 — в двоичном коде; 101 — на языке программирования.<br>
+      <b>4.</b> Почему ВМ и считает, и выполняет логические операции? 110 — она обрабатывает аналоговые данные; 111 — она построена на логических схемах, имитирующих алгебру Буля.</p>
+      <p class="noind">Комментарии: 000 — Да (алгебра Буля); 001 — Нет (нужна программа); 010 — Нет (обработка цифровая); 011 — Да (ВМ работает по программе); 100 — Да (двоичный код); 101 — Нет (это внешние устройства); 110 — Нет (язык программирования нужен для общения с машиной); 111 — Да (центральный блок и внешние устройства).</p>
+      <button class="btn" type="button" data-load="game9">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game10">
+      <h3><span class="gn">Игра 10.</span> Ваш характер</h3>
+      <p>Четыре группы по три вопроса. В каждой группе ответьте «Да» или «Нет» переключателями А, Б, В и нажмите кнопку. Если горит Z, вставьте штеккер в правое гнездо планки А в столбце с номером группы (1–4). Когда все группы пройдены, вставьте штеккеры в правые гнёзда столбцов 1–4 планки Б, поставьте переключатели на 0 и нажмите кнопку.</p>
+      <p class="noind">I. Можешь ли ты говорить неправду? Миришься ли ты со своими недостатками? Легко ли ты изменяешь своё мнение?<br>
+      II. Часто ли ты говоришь о недостатках других людей? Свободно ли ты чувствуешь себя в незнакомой компании? Доверяешь ли ты людям?<br>
+      III. Нравится ли тебе, когда тебя хвалят? Доволен ли ты собой? Любишь ли ты говорить о себе?<br>
+      IV. Доводишь ли ты начатое дело до конца? Настойчиво ли ты добиваешься своей цели? Проявляешь ли ты инициативу в работе?</p>
+      <p class="note">Шестнадцать характеристик, от «0000 — замкнутый, скромный, целеустремлённый, но ленивый» до «1111 — деятельный, откровенный, но беспринципный и себялюбивый», приведены в полном тексте руководства.</p>
+      <button class="btn" type="button" data-load="game10">Набрать программу на машине ↑</button>
+    </section>
+    <section class="page" id="game11">
+      <h3><span class="gn">Игра 11.</span> Автоматическое управление лифтом</h3>
+      <p>А — направление до вызова (1 — вверх). Б — вызов вверх. В — вызов вниз.</p>
+      <p>X — дверь разблокирована. Y — мотор работает. Z — лифт поедет вверх. При двух вызовах сразу лифт сохраняет прежнее направление.</p>
+      <button class="btn" type="button" data-load="game11">Набрать программу на машине ↑</button>
+    </section>
+    <section class="sources">
+      <div>Источник: «Игрушка Детская логическая машина ДЛМ. Руководство по эксплуатации». ВНИИ «Электронстандарт», Гатчина, 1987. Логические элементы взяты из статьи <a href="https://habr.com/ru/articles/807187/" target="_blank" rel="noopener">«Криптография и другие вычисления на детских логических машинах»</a> (Хабр).</div>
+    </section>
+  </article>
+</div>
+
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const ROWS = ['А', 'Б', 'В'];
+  const LAMPS = [
+    { name: 'V', w: 8, color: 'red' }, { name: 'X', w: 4, color: 'green' },
+    { name: 'Y', w: 2, color: 'green' }, { name: 'Z', w: 1, color: 'green' }
+  ];
+  const MAX_PINS = 30;
+
+  // Programs. Rows А, Б, В; per column: L = left hole (closes at «1»), R = right hole (closes at «0»), B = both, . = none.
+  // Wires: L0..L3 are lamp springs V, X, Y, Z; C1..C7 are column springs.
+  const PROGRAMS = [
+    { id: 'game1', group: 'Игры из инструкции', t: 'Игра 1. Какое число задумано?', src: 'рис. 3',
+      d: "Три вопроса — и машина называет задуманное число 0…7.",
+      rows: [".B.BBR.", ".R.LRB.", ".B.RLB."], wires: [["L1", "C2"], ["L2", "C4"], ["L2", "C5"], ["L3", "C6"]] },
+    { id: 'game2', group: 'Игры из инструкции', t: 'Игра 2. Честные и лгуны', src: 'рис. 4',
+      d: "Кто из троих жителей честный, а кто лгун. X, Y, Z = x, y, z.",
+      rows: ["RRLLLRL", "RLRLBBB", "LRRLBRL"], wires: [["C1", "C2"], ["C2", "L1"], ["L1", "C3"], ["L1", "C4"], ["L2", "C5"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'game3', group: 'Игры из инструкции', t: 'Игра 3. Сумма трех чисел', src: 'рис. 5',
+      d: "Сумма трёх чисел на кубике, 8…13.",
+      rows: ["BRLRLLL", "BRRLRBR", "BRLRRRB"], wires: [["L0", "C1"], ["C2", "L1"], ["L1", "C3"], ["C4", "L2"], ["L2", "C5"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'game4', group: 'Игры из инструкции', t: 'Игра 4. Двенадцать — выигрыш!', src: 'рис. 6',
+      d: "Подсказывает ход, чтобы первым набрать 12.",
+      rows: ["RLRBLRB", "RBRLBBL", "RLLRRLL"], wires: [["C1", "C2"], ["C2", "L1"], ["C3", "C4"], ["C4", "L2"], ["C5", "C6"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'game5', group: 'Игры из инструкции', t: 'Игра 5. Какой предмет выбран?', src: 'рис. 7',
+      d: "Угадывает, кому из трёх игроков досталась какая фишка (по спичкам).",
+      rows: ["LRLRLRL", "LLRLRRL", "BRLLLLL"], wires: [["L0", "C1"], ["C2", "L1"], ["L1", "C3"], ["C4", "L2"], ["L2", "C5"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'game6', group: 'Игры из инструкции', t: 'Игра 6. ДЛМ превосходит себя!', src: 'рис. 8',
+      d: "То же, что игра 5, но по ответам на вопросы игры 1.",
+      rows: ["BLR.RR.", "RLR.BB.", "LRR.RL."], wires: [["L0", "C1"], ["C2", "L1"], ["L1", "C3"], ["L2", "C5"], ["C6", "L3"]] },
+    { id: 'game7', group: 'Игры из инструкции', t: 'Игра 7. Семь спичек', src: 'рис. 9',
+      d: "Беспроигрышная стратегия в игре «Семь спичек».",
+      rows: ["LBBLBRB", "BLRBLRL", "BLLRRBR"], wires: [["C1", "C2"], ["C2", "L1"], ["C3", "C4"], ["C4", "L2"], ["L2", "C5"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'game8', group: 'Игры из инструкции', t: 'Игра 8. Зоологические карточки', src: 'рис. 10',
+      d: "Предсказывает исход раскладки зоологических карточек.",
+      rows: ["RR.R.RL", "RB.R.BR", "LL.L.RR"], wires: [["L0", "C1"], ["C2", "L1"], ["C4", "L2"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'game9', group: 'Игры из инструкции', t: 'Игра 9. ДЛМ — экзаменатор', src: 'рис. 11',
+      d: "Экзамен по вычислительной технике: номер ответа → номер комментария.",
+      rows: [".B.BBR.", ".R.LRB.", ".B.RLB."], wires: [["C2", "L1"], ["C4", "L2"], ["L2", "C5"], ["C6", "L3"]] },
+    { id: 'game10', group: 'Игры из инструкции', t: 'Игра 10. Ваш характер', src: 'рис. 12',
+      d: "Тест «Ваш характер»: 12 вопросов, ответ — код 0000…1111.",
+      rows: ["....RLL", "....LLB", "RRRRLRL"], wires: [["L0", "C1"], ["C2", "L1"], ["C3", "L2"], ["C4", "C5"], ["C5", "C6"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'game11', group: 'Игры из инструкции', t: 'Игра 11. Автоматическое управление лифтом', src: 'рис. 13',
+      d: "Логика управления лифтом: дверь, мотор, направление.",
+      rows: [".BBBLBL", ".RLBBLL", ".RBLRRB"], wires: [["C2", "L1"], ["C3", "C4"], ["C4", "L2"], ["C5", "C6"], ["C6", "L3"], ["L3", "C7"]] },
+    { id: 'not', group: 'Логические элементы (из статьи на Хабре)', t: '3 × НЕ', src: 'статья',
+      d: 'X = ¬А, Y = ¬Б, Z = ¬В.',
+      rows: ['..R.B.B', '..B.R.B', '..B.B.R'], wires: [['L1','C3'], ['L2','C5'], ['L3','C7']] },
+    { id: 'nand', group: 'Логические элементы (из статьи на Хабре)', t: '3И-НЕ', src: 'статья',
+      d: 'Z = ¬(А·Б·В) = ¬А + ¬Б + ¬В.',
+      rows: ['....RBB', '....BRB', '....BBR'], wires: [['L3','C7'], ['C7','C6'], ['C6','C5']] },
+    { id: 'nor', group: 'Логические элементы (из статьи на Хабре)', t: '3ИЛИ-НЕ', src: 'статья',
+      d: 'Z = ¬(А + Б + В) = ¬А·¬Б·¬В, один столбец.',
+      rows: ['......R', '......R', '......R'], wires: [['L3','C7']] },
+    { id: 'xor', group: 'Логические элементы (из статьи на Хабре)', t: 'Исключающее ИЛИ', src: 'статья',
+      d: 'Z = А ⊕ Б ⊕ В: горит при нечётном числе единиц.',
+      rows: ['...LRRL', '...LRLR', '...LLRR'], wires: [['L3','C7'], ['C7','C6'], ['C6','C5'], ['C5','C4']] },
+    { id: 'adder', group: 'Логические элементы (из статьи на Хабре)', t: 'Полный сумматор', src: 'статья',
+      d: 'Z — бит суммы, V — перенос. Складывает три бита.',
+      rows: ['LLBLRRL', 'LBLLRLR', 'BLLLLRR'],
+      wires: [['L0','C1'], ['C1','C2'], ['C2','C3'], ['L3','C7'], ['C7','C6'], ['C6','C5'], ['C5','C4']] },
+    { id: 'cipher', group: 'Логические элементы (из статьи на Хабре)', t: 'XOR-шифр, ключ 100', src: 'статья',
+      d: 'X, Y, Z = А, Б, В, зашифрованные ключом 100.',
+      rows: ['..R.B.B', '..B.L.B', '..B.B.L'], wires: [['L1','C3'], ['L2','C5'], ['L3','C7']] },
+    { id: 'empty', group: 'Своя программа', t: 'Пустая машина', src: '',
+      d: 'Все штеккеры и перемычки сняты, переключатели в среднем положении.', rows: ['.......', '.......', '.......'], wires: [] }
+  ];
+
+  // inp[r]: 1, 0 or null (middle position: every contact of that plank is open)
+  const S = { pins: [], wires: [], inp: [null, null, null], pressed: false, latch: false, sel: null, prog: null };
+
+  function loadProgram(id) {
+    const p = PROGRAMS.find(x => x.id === id);
+    S.pins = p.rows.map(r => [...r].map(ch => [ch === 'L' || ch === 'B', ch === 'R' || ch === 'B']));
+    S.wires = p.wires.map(w => [...w]);
+    S.inp = [null, null, null];   // the booklet: set the switches to the middle before placing pins
+    S.prog = id; S.sel = null;
+    update(); save();
+  }
+
+  // ---- circuit model ----
+  const pinCount = () => S.pins.flat().reduce((n, [l, r]) => n + l + r, 0);
+  const contactClosed = (r, c, inp = S.inp) => {
+    const v = inp[r], [l, rr] = S.pins[r][c];
+    return v !== null && ((l && v === 1) || (rr && v === 0));
+  };
+  const colTrue = (c, inp) => [0, 1, 2].every(r => contactClosed(r, c, inp));
+  function unionFind(edges) {
+    const parent = {};
+    const find = a => { if (!(a in parent)) parent[a] = a; return parent[a] === a ? a : (parent[a] = find(parent[a])); };
+    edges.forEach(([a, b]) => { parent[find(a)] = find(b); });
+    return find;
+  }
+  const NODES = ['L0', 'L1', 'L2', 'L3', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
+  function solve(inp, power) {
+    const find = unionFind(S.wires);
+    const src = new Set();
+    for (let c = 0; c < 7; c++) if (power && colTrue(c, inp)) src.add('C' + (c + 1));
+    const hasSrc = n => NODES.some(m => src.has(m) && find(m) === find(n));
+    const hasLamp = n => NODES.some(m => m[0] === 'L' && find(m) === find(n));
+    const lit = LAMPS.map((_, k) => hasSrc('L' + k));
+    // a jumper carries current when it lies between a conducting column and a lamp
+    const wireState = S.wires.map(([a, b], i) => {
+      if (!hasSrc(a)) return 'dead';
+      if (!hasLamp(a)) return 'live';
+      const f2 = unionFind(S.wires.filter((_, j) => j !== i));
+      if (f2(a) === f2(b)) return 'flow';
+      const side = n => NODES.filter(m => f2(m) === f2(n));
+      const sa = side(a), sb = side(b);
+      const s = arr => arr.some(m => src.has(m)), l = arr => arr.some(m => m[0] === 'L');
+      return (s(sa) && l(sb)) || (l(sa) && s(sb)) ? 'flow' : 'live';
+    });
+    const colFlow = [...Array(7)].map((_, c) => src.has('C' + (c + 1)) && hasLamp('C' + (c + 1)));
+    return { lit, wireState, colFlow, src, hasSrc };
+  }
+  const lampsFor = inp => solve(inp, true).lit;
+
+  const el = (svg, tag, attrs = {}, parent = svg) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    parent.appendChild(e); return e;
+  };
+
+  // =============== FRONT PANEL (after Fig. 1 of the booklet) ===============
+  const svg = document.getElementById('dlm');
+  const E = (tag, attrs, parent) => el(svg, tag, attrs, parent);
+  const colX = c => 95 + c * 105;
+  const lampX = k => colX(k * 2);
+  const ROW_Y = [330, 440, 550], PLANK_H = 76;
+  const LSPR_Y = 182, CSPR_LOW = 268, CSPR_HIGH = 226;
+  const colSprY = c => c % 2 ? CSPR_HIGH : CSPR_LOW;   // springs of columns 2, 4, 6 sit higher
+  const SW_Y = ROW_Y.map(y => y + PLANK_H / 2);
+  const INK = '#2a2d33';
+
+  E('defs').innerHTML = `
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="9"/></filter>
+    <radialGradient id="pinG" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d9d6cc"/></radialGradient>
+    <radialGradient id="btnG" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#4a4d55"/><stop offset="1" stop-color="#101114"/></radialGradient>
+    <linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf6"/><stop offset="1" stop-color="#ebe9e1"/></linearGradient>`;
+
+  // body, rails and the side panel, as in Fig. 1
+  E('rect', { x: 6, y: 6, width: 988, height: 688, rx: 28, fill: 'url(#bodyG)', stroke: '#bcb8ac', 'stroke-width': 3 });
+  E('rect', { x: 26, y: 20, width: 772, height: 672, fill: 'none', stroke: '#cfccc1', 'stroke-width': 2 });
+  E('line', { x1: 26, y1: 62, x2: 798, y2: 62, stroke: '#cfccc1', 'stroke-width': 2 });
+  E('line', { x1: 26, y1: 140, x2: 798, y2: 140, stroke: '#cfccc1', 'stroke-width': 2 });
+  E('line', { x1: 812, y1: 62, x2: 980, y2: 62, stroke: '#cfccc1', 'stroke-width': 2 });
+  E('line', { x1: 812, y1: 140, x2: 980, y2: 140, stroke: '#cfccc1', 'stroke-width': 2 });
+
+  // lamps with oval labels V-8 … Z-1
+  const lampEls = LAMPS.map((L, k) => {
+    const x = lampX(k);
+    E('rect', { x: x - 36, y: 26, width: 72, height: 30, rx: 15, fill: 'none', stroke: '#9c988c', 'stroke-width': 2 });
+    E('text', { x, y: 48, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-style': 'italic', 'font-size': 20, fill: '#5d5a52' }).textContent = `${L.name}-${L.w}`;
+    E('rect', { x: x - 48, y: 72, width: 96, height: 58, rx: 3, fill: '#dedbd1', stroke: '#b7b3a7', 'stroke-width': 2 });
+    const glow = E('rect', { x: x - 40, y: 76, width: 80, height: 50, rx: 6, fill: L.color === 'red' ? '#ff5a3c' : '#53ff7e', filter: 'url(#glow)', opacity: 0 });
+    const lens = E('rect', { x: x - 36, y: 80, width: 72, height: 42, rx: 2 });
+    E('rect', { x: x - 30, y: 84, width: 60, height: 10, rx: 2, fill: '#ffffff', opacity: .18 });
+    E('line', { x1: x, y1: 130, x2: x, y2: LSPR_Y - 16, stroke: '#b7b3a7', 'stroke-width': 2 });
+    return { glow, lens, color: L.color };
+  });
+
+  // side panel: emblem, button
+  E('ellipse', { cx: 896, cy: 101, rx: 62, ry: 30, fill: '#c8222c' });
+  E('ellipse', { cx: 896, cy: 101, rx: 55, ry: 24, fill: 'none', stroke: '#fff', 'stroke-width': 2.5 });
+  E('text', { x: 896, y: 110, 'text-anchor': 'middle', 'font-family': 'Rubik, sans-serif', 'font-size': 25, 'font-weight': 800, fill: '#fff' }).textContent = 'длм';
+  const btnG = E('g', { class: 'hit', tabindex: 0, role: 'button', 'aria-label': 'Кнопка: держать, чтобы получить ответ' });
+  E('circle', { cx: 896, cy: 220, r: 44, fill: '#efede6', stroke: '#b7b3a7', 'stroke-width': 3 }, btnG);
+  E('circle', { cx: 896, cy: 220, r: 34, fill: 'none', stroke: '#cfccc1', 'stroke-width': 2 }, btnG);
+  const btnCap = E('circle', { cx: 896, cy: 220, r: 27, fill: 'url(#btnG)', class: 'focusring', stroke: 'transparent' }, btnG);
+
+  // contact springs
+  const springEls = {};
+  function spring(id, x, y, label) {
+    const g = E('g', { class: 'hit', tabindex: 0, role: 'button', 'aria-label': label });
+    E('circle', { cx: x, cy: y + 3, r: 17, fill: '#000', opacity: .12 }, g);
+    const ring = E('circle', { cx: x, cy: y, r: 16, fill: '#c9cdd3', stroke: '#7d838c', 'stroke-width': 2.5, class: 'focusring' }, g);
+    E('circle', { cx: x, cy: y, r: 11, fill: 'none', stroke: '#8a9098', 'stroke-width': 2 }, g);
+    E('circle', { cx: x, cy: y, r: 6, fill: '#55595f' }, g);
+    springEls[id] = { ring, x, y };
+    g.addEventListener('click', () => pickSpring(id));
+  }
+  LAMPS.forEach((L, k) => spring('L' + k, lampX(k), LSPR_Y, `Пружина лампы ${L.name}`));
+  for (let c = 0; c < 7; c++) {
+    E('line', { x1: colX(c), y1: colSprY(c) + 16, x2: colX(c), y2: ROW_Y[0] - 22, stroke: '#9c988c', 'stroke-width': 2.5 });
+    E('text', { x: colX(c), y: ROW_Y[0] - 6, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-style': 'italic', 'font-size': 20, fill: '#5d5a52' }).textContent = c + 1;
+    spring('C' + (c + 1), colX(c), colSprY(c), `Пружина столбца ${c + 1}`);
+  }
+
+  // planks: 14 holes each; the column's divider runs between its two holes
+  const plankGs = [], holeEls = [];
+  ROW_Y.forEach((y, r) => {
+    E('rect', { x: 30, y: y - 6, width: 764, height: PLANK_H + 12, fill: '#e2dfd5' });
+    const g = E('g', { style: 'transition: transform .18s ease' });
+    plankGs.push(g);
+    E('rect', { x: 34, y, width: 756, height: PLANK_H, rx: 3, fill: '#d42a35' }, g);
+    E('rect', { x: 34, y: y + PLANK_H - 8, width: 756, height: 8, rx: 2, fill: '#a51c26' }, g);
+    holeEls[r] = [];
+    for (let c = 0; c < 7; c++) {
+      E('line', { x1: colX(c), y1: y + 4, x2: colX(c), y2: y + PLANK_H - 10, stroke: '#8f141d', 'stroke-width': 2.5 }, g);
+      holeEls[r][c] = [0, 1].map(side => {
+        const hx = colX(c) + (side ? 26 : -26), hy = y + PLANK_H / 2 - 3;
+        const hg = E('g', { class: 'hit', tabindex: 0, role: 'button' }, g);
+        E('circle', { cx: hx, cy: hy, r: 20, fill: 'transparent' }, hg);
+        E('circle', { cx: hx, cy: hy, r: 10, fill: '#3a0b10', class: 'focusring', stroke: 'transparent' }, hg);
+        const pin = E('g', { opacity: 0 }, hg);
+        E('ellipse', { cx: hx + 3, cy: hy + 5, rx: 12, ry: 9, fill: '#000', opacity: .25 }, pin);
+        E('circle', { cx: hx, cy: hy, r: 12, fill: 'url(#pinG)', stroke: '#bdb8aa', 'stroke-width': 1.5 }, pin);
+        for (let a = 0; a < 4; a++) {
+          const ang = a * Math.PI / 4;
+          E('line', { x1: hx - 7 * Math.cos(ang), y1: hy - 7 * Math.sin(ang), x2: hx + 7 * Math.cos(ang), y2: hy + 7 * Math.sin(ang), stroke: '#c9c4b6', 'stroke-width': 1.2 }, pin);
+        }
+        hg.addEventListener('click', () => togglePin(r, c, side));
+        return { hg, pin, label: `Столбец ${c + 1}, планка ${ROWS[r]}, ${side ? 'правое' : 'левое'} гнездо` };
+      });
+    }
+  });
+
+  // rotary switches А-4, Б-2, В-1 with positions 0 · middle · 1
+  const swEls = ROWS.map((name, r) => {
+    const cy = SW_Y[r];
+    const mark = (v, x) => {
+      const g = E('g', { class: 'hit', tabindex: 0, role: 'button', 'aria-label': `Переключатель ${name} в положение ${v}` });
+      E('circle', { cx: x, cy: cy + 34, r: 15, fill: 'transparent' }, g);
+      E('circle', { cx: x, cy: cy + 34, r: 11, fill: 'none', stroke: '#9c988c', 'stroke-width': 1.8 }, g);
+      E('text', { x, y: cy + 40, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-size': 16, fill: '#5d5a52' }, g).textContent = v;
+      g.addEventListener('click', () => setSwitch(r, v));
+    };
+    mark(0, 836); mark(1, 956);
+    const g = E('g', { class: 'hit', tabindex: 0, role: 'switch' });
+    E('circle', { cx: 896, cy, r: 40, fill: '#efede6', stroke: '#b7b3a7', 'stroke-width': 3, class: 'focusring' }, g);
+    const knob = E('g', { style: `transition: transform .18s ease; transform-origin: 896px ${cy}px` }, g);
+    E('rect', { x: 881, y: cy - 40, width: 30, height: 80, rx: 4, fill: '#f8f7f2', stroke: INK, 'stroke-width': 2 }, knob);
+    E('line', { x1: 896, y1: cy - 12, x2: 896, y2: cy + 12, stroke: INK, 'stroke-width': 2 }, knob);
+    E('text', { x: 896, y: cy - 18, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-style': 'italic', 'font-size': 18, fill: INK }, knob).textContent = name;
+    E('text', { x: 896, y: cy + 33, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-style': 'italic', 'font-size': 18, fill: INK }, knob).textContent = [4, 2, 1][r];
+    g.addEventListener('click', () => setSwitch(r, S.inp[r] === null ? 1 : 1 - S.inp[r]));
+    return { g, knob };
+  });
+
+  const wireLayer = E('g');
+
+  svg.addEventListener('keydown', e => {
+    const g = e.target.closest('.hit');
+    if (!g || g === btnG) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); g.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+  });
+
+  // =============== INSIDE VIEW: the mechanism, reconstructed ===============
+  // No photo of the mechanism under the cover is known; this follows the booklet (circuits open in
+  // the middle position) and the memory of an owner. Under every column, below each plank, an upright
+  // spring leaf stands between the column's two holes, with a fixed contact on either side. Turning
+  // a switch slides its plank: at «1» the peg in the left hole bends the leaf right onto its contact,
+  // at «0» the peg in the right hole bends it left; in the middle nothing touches it. The three leaves
+  // of a column connect the + bus at the bottom to the column spring; lamps sit on top, as on the panel.
+  const ins = document.getElementById('inside');
+  const I = (tag, attrs, parent) => el(ins, tag, attrs, parent);
+  const IX = c => 300 + c * 95;                  // column x: the leaf stands right on it
+  const HOFF = 22, TRAVEL = 27;                   // hole offset from the column line; plank travel brings a peg onto the leaf
+  const NEG_Y = 36, LAMP_Y = 84, LNODE_Y = 134, NODE_Y = 196, PL_Y = [250, 380, 510], STRIP_H = 30, BUS_Y = 690;
+  const TIP_Y = y => y + STRIP_H + 20, ANCH_Y = y => y + STRIP_H + 64, PEG_END = y => y + STRIP_H + 22;
+  const ILX = k => IX(k * 2);
+  const BP = { ink: '#9fb6e6', dim: '#50678f', txt: '#c9d6f2', strip: '#c8222c', stripDark: '#7d1218', pin: '#f1efe8' };
+
+  for (let x = 0; x <= 1000; x += 40) I('line', { x1: x, y1: 0, x2: x, y2: 720, stroke: '#1b3463', 'stroke-width': 1 });
+  for (let y = 0; y <= 720; y += 40) I('line', { x1: 0, y1: y, x2: 1000, y2: y, stroke: '#1b3463', 'stroke-width': 1 });
+
+  const wpath = (d, parent) => I('path', { d, class: 'w dead' }, parent);
+  const T = (x, y, s, attrs = {}, parent) => { const t = I('text', Object.assign({ x, y, fill: BP.txt, 'font-family': 'PT Sans, sans-serif', 'font-size': 15 }, attrs), parent); t.textContent = s; return t; };
+
+  // battery 3 × А-332 on the left: − to the lamps' bus on top, + through the button to the bus at the bottom
+  const segBatNeg = wpath(`M44 156 V${NEG_Y} H${ILX(3)}`);
+  const segBatPos = wpath(`M44 226 V${BUS_Y} H96`);
+  const segBus = wpath(`M150 ${BUS_Y} H${IX(6)}`);
+  [0, 1, 2].forEach(i => {
+    const y = 160 + i * 26;
+    I('line', { x1: 31, y1: y, x2: 57, y2: y, stroke: BP.txt, 'stroke-width': 6 });
+    I('line', { x1: 20, y1: y + 10, x2: 68, y2: y + 10, stroke: BP.txt, 'stroke-width': 3 });
+  });
+  T(64, 186, '3 × А-332', { 'font-size': 12 });
+  T(64, 201, '4,5 В', { 'font-size': 12 });
+  I('circle', { cx: 96, cy: BUS_Y, r: 4, fill: BP.txt });
+  I('circle', { cx: 150, cy: BUS_Y, r: 4, fill: BP.txt });
+  const btnBlade = I('line', { x1: 96, y1: BUS_Y, x2: 146, y2: BUS_Y - 24, stroke: BP.txt, 'stroke-width': 3, 'stroke-linecap': 'round' });
+  T(123, BUS_Y - 28, 'кнопка', { 'text-anchor': 'middle', 'font-size': 12 });
+  T(IX(6) + 8, BUS_Y + 5, 'шина +', { 'font-size': 12 });
+  T(ILX(3) + 8, NEG_Y + 5, 'шина −', { 'font-size': 12 });
+
+  // columns: from the + bus up through the leaves of planks В, Б, А to the column spring.
+  // Each leaf's two fixed contacts are joined around it and lead to the next leaf.
+  const colEls = [];
+  for (let c = 0; c < 7; c++) {
+    const x = IX(c);
+    I('circle', { cx: x, cy: BUS_Y, r: 4, fill: BP.txt });
+    const feed = wpath(`M${x} ${BUS_Y} V${ANCH_Y(PL_Y[2])}`);
+    const stages = [2, 1, 0].map(r => {
+      const tip = TIP_Y(PL_Y[r]), join = r ? ANCH_Y(PL_Y[r - 1]) : NODE_Y + 30;
+      const sides = [-1, 1].map(s => {
+        I('rect', { x: x + s * 13 - 2, y: tip - 10, width: 4, height: 16, fill: BP.txt });
+        return wpath(`M${x + s * 13} ${tip} H${x + s * 36} V${join} H${x}${r ? '' : ` V${NODE_Y}`}`);
+      });
+      I('circle', { cx: x, cy: ANCH_Y(PL_Y[r]), r: 4, fill: BP.txt });
+      const leaf = I('line', { x1: x, y1: ANCH_Y(PL_Y[r]), x2: x, y2: tip - 6, stroke: BP.txt, 'stroke-width': 3.5, 'stroke-linecap': 'round', style: 'transition: all .2s ease' });
+      return { r, sides, leaf };
+    });
+    T(x + 12, NODE_Y - 10, String(c + 1), { 'font-style': 'italic', 'font-size': 16 });
+    colEls.push({ x, feed, stages });
+  }
+  T(IX(0) - 26, NODE_Y + 5, 'пружины столбцов', { 'font-size': 12, 'text-anchor': 'end' });
+  T(ILX(0) - 26, LNODE_Y + 5, 'пружины ламп', { 'font-size': 12, 'text-anchor': 'end' });
+
+  // planks: a dial (the switch) cranks the strip left or right; pegs stick out below it, past the leaves
+  const insPlanks = PL_Y.map((y, r) => {
+    const cy = y + STRIP_H / 2;
+    T(108, y - 8, `переключатель ${ROWS[r]}`, { 'font-size': 12, 'text-anchor': 'middle' });
+    I('circle', { cx: 108, cy, r: 24, fill: '#0f2348', stroke: BP.txt, 'stroke-width': 2 });
+    const knob = I('line', { x1: 108, y1: cy + 18, x2: 108, y2: cy - 18, stroke: BP.txt, 'stroke-width': 5, 'stroke-linecap': 'round', style: `transition: transform .25s ease; transform-origin: 108px ${cy}px` });
+    T(84, cy + 40, '0', { 'font-size': 12, 'text-anchor': 'middle' }); T(132, cy + 40, '1', { 'font-size': 12, 'text-anchor': 'middle' });
+    const rod = I('line', { x1: 132, y1: cy, x2: 196, y2: cy, stroke: BP.txt, 'stroke-width': 3, style: 'transition: transform .25s ease' });
+    const g = I('g', { style: 'transition: transform .25s ease' });
+    I('rect', { x: 196, y, width: IX(6) + 70 - 196, height: STRIP_H, rx: 3, fill: BP.strip, stroke: BP.stripDark, 'stroke-width': 2 }, g);
+    T(206, y + 20, ROWS[r], { 'font-size': 15, fill: '#ffffff', 'font-weight': 700 }, g);
+    const holes = [];
+    for (let c = 0; c < 7; c++) {
+      holes[c] = [0, 1].map(side => {
+        const hx = IX(c) + (side ? HOFF : -HOFF);
+        I('circle', { cx: hx, cy, r: 7, fill: BP.stripDark }, g);
+        return I('rect', { x: hx - 5, y: cy - 9, width: 10, height: PEG_END(y) - cy + 9, rx: 3, fill: BP.pin, stroke: '#9c988c', 'stroke-width': 1 }, g);
+      });
+    }
+    return { knob, rod, g, holes };
+  });
+  const plankState = PL_Y.map(y => T(108, y + STRIP_H + 62, '', { 'font-size': 12, 'text-anchor': 'middle', fill: '#ffd166' }));
+
+  // lamps on top: from the lamp spring up through the bulb to the − bus
+  const insLamps = LAMPS.map((L, k) => {
+    const x = ILX(k);
+    const up = wpath(`M${x} ${LNODE_Y} V${LAMP_Y + 18}`);
+    const down = wpath(`M${x} ${LAMP_Y - 18} V${NEG_Y}`);
+    const bulb = I('circle', { cx: x, cy: LAMP_Y, r: 18, fill: '#0f2348', stroke: BP.txt, 'stroke-width': 2.5 });
+    I('line', { x1: x - 12, y1: LAMP_Y - 12, x2: x + 12, y2: LAMP_Y + 12, stroke: BP.txt, 'stroke-width': 2 });
+    I('line', { x1: x + 12, y1: LAMP_Y - 12, x2: x - 12, y2: LAMP_Y + 12, stroke: BP.txt, 'stroke-width': 2 });
+    T(x + 26, LAMP_Y + 5, `${L.name}-${L.w}`, { 'font-style': 'italic' });
+    return { up, down, bulb };
+  });
+  const insWires = I('g');
+  // draw node circles above jumpers again, for clarity
+  const nodeCaps = I('g');
+
+  const insPos = {};
+  LAMPS.forEach((_, k) => { insPos['L' + k] = [ILX(k), LNODE_Y]; });
+  for (let c = 0; c < 7; c++) insPos['C' + (c + 1)] = [IX(c), NODE_Y];
+  function insWirePath(a, b) {
+    const [x1, y1] = insPos[a], [x2, y2] = insPos[b];
+    // jumpers between two springs of one row bow into the gap between the rows
+    if (y1 === y2) { const bow = (28 + Math.abs(x1 - x2) * 0.08) * (y1 === NODE_Y ? -1 : 1); return `M${x1} ${y1} Q${(x1 + x2) / 2} ${y1 + bow} ${x2} ${y2}`; }
+    return `M${x1} ${y1} C${x1} ${(y1 + y2) / 2 + 10} ${x2} ${(y1 + y2) / 2 - 10} ${x2} ${y2}`;
+  }
+
+  // =============== interactions ===============
+  const hintEl = document.getElementById('hint');
+  let msg = null;
+  function flash(text) { msg = text; update(); clearTimeout(flash.t); flash.t = setTimeout(() => { msg = null; update(); }, 3600); }
+
+  function togglePin(r, c, side) {
+    const on = S.pins[r][c][side];
+    if (!on && pinCount() >= MAX_PINS) { flash(`В комплекте всего ${MAX_PINS} штеккеров. Выньте лишний, чтобы поставить новый.`); return; }
+    S.pins[r][c][side] = !on; S.prog = null;
+    if (S.inp[r] !== null) flash(`Руководство велит перед установкой штеккеров ставить переключатель ${ROWS[r]} в среднее положение, иначе можно сломать машину.`);
+    else update();
+    save();
+  }
+  function setSwitch(r, v) { S.inp[r] = v; update(); save(); }
+  function pickSpring(id) {
+    if (!S.sel) { S.sel = id; update(); return; }
+    if (S.sel === id) { S.sel = null; update(); return; }
+    const a = S.sel, b = id;
+    if (!S.wires.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) {
+      if (S.wires.length >= 7) { S.sel = null; flash('В комплекте всего 7 перемычек. Снимите лишнюю.'); return; }
+      S.wires.push([a, b]);
+    }
+    S.sel = null; S.prog = null; update(); save();
+  }
+  function setPressed(v) { if (S.pressed !== v) { S.pressed = v; update(); } }
+  btnG.addEventListener('pointerdown', e => { e.preventDefault(); btnG.setPointerCapture?.(e.pointerId); setPressed(true); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => btnG.addEventListener(t, () => setPressed(false)));
+  btnG.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPressed(true); } });
+  btnG.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); });
+  btnG.addEventListener('blur', () => setPressed(false));
+  document.getElementById('latch').addEventListener('change', e => { S.latch = e.target.checked; update(); });
+  document.getElementById('mid').addEventListener('click', () => { S.inp = [null, null, null]; update(); save(); });
+  document.getElementById('clear').addEventListener('click', () => loadProgram('empty'));
+
+  // ---- lower panels ----
+  const progBox = document.getElementById('programs');
+  let lastGroup = null;
+  const progBtns = PROGRAMS.map(p => {
+    if (p.group !== lastGroup) { lastGroup = p.group; const d = document.createElement('div'); d.className = 'group-label'; d.textContent = p.group; progBox.appendChild(d); }
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'prog'; b.id = 'prog-' + p.id;
+    b.innerHTML = `<span class="t"></span><span class="src"></span><span class="d"></span>`;
+    b.querySelector('.t').textContent = p.t; b.querySelector('.src').textContent = p.src; b.querySelector('.d').textContent = p.d;
+    b.addEventListener('click', () => loadProgram(p.id));
+    progBox.appendChild(b);
+    return [p.id, b];
+  });
+  document.querySelectorAll('[data-load]').forEach(b => b.addEventListener('click', () => {
+    loadProgram(b.dataset.load); svg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }));
+
+  const tt = document.getElementById('tt');
+  function renderTable() {
+    let h = '<thead><tr><th>А</th><th>Б</th><th>В</th>' + LAMPS.map((L, i) => `<th${i ? '' : ' class="sep"'}>${L.name}</th>`).join('') + '<th class="sep">число</th></tr></thead><tbody>';
+    for (let n = 0; n < 8; n++) {
+      const inp = [n >> 2 & 1, n >> 1 & 1, n & 1];
+      const lit = lampsFor(inp);
+      const val = lit.reduce((s, on, k) => s + (on ? LAMPS[k].w : 0), 0);
+      const cur = inp.every((v, i) => v === S.inp[i]);
+      h += `<tr data-n="${n}"${cur ? ' class="cur"' : ''}><td>${inp[0]}</td><td>${inp[1]}</td><td>${inp[2]}</td>` +
+        lit.map((on, k) => `<td${k ? '' : ' class="sep"'}><span class="dot ${LAMPS[k].color}${on ? ' on' : ''}"></span></td>`).join('') +
+        `<td class="sep">${val}</td></tr>`;
+    }
+    tt.innerHTML = h + '</tbody>';
+  }
+  tt.addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-n]'); if (!tr) return;
+    const n = +tr.dataset.n; S.inp = [n >> 2 & 1, n >> 1 & 1, n & 1]; update(); save();
+  });
+
+  const exprs = document.getElementById('exprs');
+  function renderExprs() {
+    const find = unionFind(S.wires);
+    exprs.innerHTML = '';
+    for (let c = 0; c < 7; c++) {
+      const terms = [];
+      let dead = false, used = false;
+      S.pins.forEach((row, r) => {
+        const [l, rr] = row[c];
+        if (l || rr) used = true;
+        if (l && rr) return;
+        if (l) terms.push(ROWS[r]); else if (rr) terms.push('¬' + ROWS[r]); else dead = true;
+      });
+      const lamps = LAMPS.filter((_, k) => find('L' + k) === find('C' + (c + 1))).map(L => L.name);
+      const li = document.createElement('li');
+      const expr = !used ? '<span class="dead">пусто</span>' : dead ? '<span class="dead">цепь разомкнута</span>' : (terms.length ? terms.join('·') : '1');
+      li.innerHTML = `<span class="n">${c + 1}</span><span>${expr}</span><span class="to">${lamps.length ? '→ ' + lamps.join(', ') : used ? '<span class="dead">без перемычки</span>' : ''}</span>`;
+      exprs.appendChild(li);
+    }
+  }
+
+  // ---- render ----
+  function frontWirePath(a, b) {
+    const A = springEls[a], B = springEls[b];
+    const sag = 22 + Math.abs(A.x - B.x) * 0.1;
+    return `M${A.x} ${A.y} Q${(A.x + B.x) / 2} ${(A.y + B.y) / 2 + sag} ${B.x} ${B.y}`;
+  }
+  // wavy line, the way the booklet draws a jumper
+  function wavy(a, b) {
+    const A = springEls[a], B = springEls[b];
+    const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy), n = Math.max(4, Math.round(len / 14));
+    const ux = dx / len, uy = dy / len, px = -uy, py = ux;
+    let d = `M${A.x + ux * 16} ${A.y + uy * 16}`;
+    for (let i = 1; i <= n; i++) {
+      const t = 16 + (len - 32) * i / n, s = (i % 2 ? 5 : -5);
+      const tm = 16 + (len - 32) * (i - .5) / n;
+      d += ` Q${A.x + ux * tm + px * s} ${A.y + uy * tm + py * s} ${A.x + ux * t} ${A.y + uy * t}`;
+    }
+    return d;
+  }
+  function renderFrontWires() {
+    wireLayer.innerHTML = '';
+    S.wires.forEach(([a, b], i) => {
+      const g = E('g', { class: 'hit', tabindex: 0, role: 'button', 'aria-label': `Перемычка ${a}–${b}, снять` }, wireLayer);
+      const d = wavy(a, b);
+      E('path', { d, fill: 'none', stroke: 'transparent', 'stroke-width': 18 }, g);
+      E('path', { d, fill: 'none', stroke: '#1b1d22', 'stroke-width': 3.5, 'stroke-linecap': 'round', class: 'focusring' }, g);
+      g.addEventListener('click', () => { S.wires.splice(i, 1); S.prog = null; update(); save(); });
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); g.dispatchEvent(new MouseEvent('click')); } });
+    });
+  }
+  const setCls = (node, state) => node.setAttribute('class', 'w ' + state);
+
+  function update() {
+    const power = S.pressed || S.latch;
+    const sol = solve(S.inp, power);
+    const anyFlow = sol.lit.some(Boolean);
+
+    // front panel
+    lampEls.forEach((L, k) => {
+      const on = sol.lit[k];
+      L.glow.setAttribute('opacity', on ? .95 : 0);
+      L.lens.setAttribute('fill', L.color === 'red' ? (on ? '#ff8a6a' : '#9c2a24') : (on ? '#b9ffcb' : '#1f6b45'));
+    });
+    btnCap.setAttribute('r', S.pressed ? 24 : 27);
+    S.pins.forEach((row, r) => row.forEach((pr, c) => pr.forEach((v, side) => {
+      const h = holeEls[r][c][side];
+      h.pin.setAttribute('opacity', v ? 1 : 0);
+      h.hg.setAttribute('aria-label', h.label + (v ? ': штеккер стоит' : ': пусто'));
+    })));
+    S.inp.forEach((v, r) => {
+      plankGs[r].style.transform = `translateX(${v === null ? 0 : v ? 8 : -8}px)`;
+      swEls[r].knob.style.transform = `rotate(${v === null ? 0 : v ? 90 : -90}deg)`;
+      swEls[r].g.setAttribute('aria-checked', v === 1 ? 'true' : v === 0 ? 'false' : 'mixed');
+      swEls[r].g.setAttribute('aria-label', `Переключатель ${ROWS[r]}: ${v === null ? 'среднее положение' : v}`);
+    });
+    Object.entries(springEls).forEach(([id, s]) => {
+      s.ring.setAttribute('stroke', S.sel === id ? '#23409a' : '#7d838c');
+      s.ring.setAttribute('stroke-width', S.sel === id ? 6 : 2.5);
+    });
+    renderFrontWires();
+
+    // inside view
+    btnBlade.setAttribute('x2', power ? 150 : 146);
+    btnBlade.setAttribute('y2', power ? BUS_Y : BUS_Y - 24);
+    const supply = !power ? 'dead' : anyFlow ? 'flow' : 'live';
+    setCls(segBatPos, supply); setCls(segBus, supply);
+    setCls(segBatNeg, anyFlow ? 'flow' : 'dead');
+    insPlanks.forEach((P, r) => {
+      const v = S.inp[r], shift = v === null ? 0 : v ? TRAVEL : -TRAVEL;
+      P.g.style.transform = `translateX(${shift}px)`;
+      P.rod.style.transform = `translateX(${shift}px)`;
+      P.knob.style.transform = `rotate(${v === null ? 0 : v ? 50 : -50}deg)`;
+      for (let c = 0; c < 7; c++) P.holes[c].forEach((peg, side) => peg.setAttribute('opacity', S.pins[r][c][side] ? 1 : 0));
+    });
+    plankState.forEach((t, r) => { const v = S.inp[r]; t.textContent = v === null ? 'середина' : v ? '«1» · вправо' : '«0» · влево'; });
+    colEls.forEach((col, c) => {
+      let reach = power;     // energized from the bus up to the first open leaf
+      setCls(col.feed, !reach ? 'dead' : sol.colFlow[c] ? 'flow' : 'live');
+      col.stages.forEach(st => {
+        const side = contactClosed(st.r, c) ? (S.inp[st.r] ? 1 : -1) : 0;   // the contact the leaf is bent onto
+        st.leaf.setAttribute('x2', col.x + side * 11);
+        reach = reach && side !== 0;
+        st.sides.forEach((seg, i) => setCls(seg, !reach ? 'dead' : sol.colFlow[c] && side === (i ? 1 : -1) ? 'flow' : 'live'));
+      });
+    });
+    insLamps.forEach((L, k) => {
+      const on = sol.lit[k];
+      setCls(L.up, on ? 'flow' : sol.hasSrc('L' + k) ? 'live' : 'dead');
+      setCls(L.down, on ? 'flow' : 'dead');
+      L.bulb.setAttribute('fill', on ? (LAMPS[k].color === 'red' ? '#ff5a3c' : '#53ff7e') : '#0f2348');
+    });
+    insWires.innerHTML = '';
+    S.wires.forEach(([a, b], i) => I('path', { d: insWirePath(a, b), class: 'w ' + sol.wireState[i] }, insWires));
+    nodeCaps.innerHTML = '';
+    Object.entries(insPos).forEach(([id, [x, y]]) => I('circle', { cx: x, cy: y, r: 7, fill: '#0f2348', stroke: '#c9d6f2', 'stroke-width': 2.5 }, nodeCaps));
+
+    renderTable();
+    renderExprs();
+    progBtns.forEach(([id, b]) => b.setAttribute('aria-pressed', S.prog === id ? 'true' : 'false'));
+
+    const n = pinCount(), chip = document.getElementById('pincount');
+    chip.textContent = `штеккеров: ${n} / ${MAX_PINS} · перемычек: ${S.wires.length} / 7`; chip.classList.toggle('over', n >= MAX_PINS);
+
+    const ro = document.getElementById('readout');
+    if (power) {
+      const bits = sol.lit.map(b => b ? 1 : 0).join('');
+      const val = sol.lit.reduce((s, b, k) => s + (b ? LAMPS[k].w : 0), 0);
+      const names = LAMPS.filter((_, k) => sol.lit[k]).map(L => L.name).join(' ') || 'ничего';
+      ro.innerHTML = `горят: <b>${names}</b> · ${bits}₂ = <b>${val}</b>`;
+      ro.hidden = false;
+    } else ro.hidden = true;
+    hintEl.className = msg ? 'warn' : 'hint';
+    hintEl.textContent = msg ?? (S.sel ? 'Теперь щёлкните вторую пружину, чтобы поставить перемычку.'
+      : S.inp.includes(null) && !power ? 'Переключатели в среднем положении: планки отведены, все контакты разомкнуты.'
+      : power ? '' : 'Нажмите и держите кнопку, чтобы получить ответ.');
+  }
+
+  // ---- persistence ----
+  const KEY = 'dlm-state-v3';
+  function save() { try { localStorage.setItem(KEY, JSON.stringify({ pins: S.pins, wires: S.wires, inp: S.inp, prog: S.prog })); } catch (e) {} }
+  function restore() {
+    try {
+      const d = JSON.parse(localStorage.getItem(KEY));
+      if (d && d.pins?.length === 3 && Array.isArray(d.wires) && Array.isArray(d.inp)) { Object.assign(S, d); update(); return true; }
+    } catch (e) {}
+    return false;
+  }
+  if (!restore()) loadProgram('game1');
+})();
+</script>
+
+</body>
+</html>
