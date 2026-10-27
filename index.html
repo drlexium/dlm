@@ -415,7 +415,9 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     const hasSrc = n => NODES.some(m => src.has(m) && find(m) === find(n));
     const hasLamp = n => NODES.some(m => m[0] === 'L' && find(m) === find(n));
     const lit = LAMPS.map((_, k) => hasSrc('L' + k));
-    // a jumper carries current when it lies between a conducting column and a lamp
+    // a jumper carries current when it lies between a conducting column and a lamp;
+    // wireRev[i] marks jumpers where it runs from b to a
+    const wireRev = [];
     const wireState = S.wires.map(([a, b], i) => {
       if (!hasSrc(a)) return 'dead';
       if (!hasLamp(a)) return 'live';
@@ -424,10 +426,11 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
       const side = n => NODES.filter(m => f2(m) === f2(n));
       const sa = side(a), sb = side(b);
       const s = arr => arr.some(m => src.has(m)), l = arr => arr.some(m => m[0] === 'L');
-      return (s(sa) && l(sb)) || (l(sa) && s(sb)) ? 'flow' : 'live';
+      wireRev[i] = l(sa) && s(sb);
+      return (s(sa) && l(sb)) || wireRev[i] ? 'flow' : 'live';
     });
     const colFlow = [...Array(7)].map((_, c) => src.has('C' + (c + 1)) && hasLamp('C' + (c + 1)));
-    return { lit, wireState, colFlow, src, hasSrc };
+    return { lit, wireState, wireRev, colFlow, src, hasSrc };
   }
   const lampsFor = inp => solve(inp, true).lit;
 
@@ -585,7 +588,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   const T = (x, y, s, attrs = {}, parent) => { const t = I('text', Object.assign({ x, y, fill: BP.txt, 'font-family': 'PT Sans, sans-serif', 'font-size': 15 }, attrs), parent); t.textContent = s; return t; };
 
   // battery 3 × А-332 on the left: − to the lamps' bus on top, + through the button to the bus at the bottom
-  const segBatNeg = wpath(`M44 156 V${NEG_Y} H${ILX(3)}`);
+  const segBatNeg = wpath(`M${ILX(3)} ${NEG_Y} H44 V156`);   // drawn from the bus back to −, so the dashes run with the current
   const segBatPos = wpath(`M44 226 V${BUS_Y} H96`);
   const segBus = wpath(`M150 ${BUS_Y} H${IX(6)}`);
   [0, 1, 2].forEach(i => {
@@ -1080,7 +1083,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
       L.bulb.setAttribute('fill', on ? (LAMPS[k].color === 'red' ? '#ff5a3c' : '#53ff7e') : '#0f2348');
     });
     insWires.innerHTML = '';
-    S.wires.forEach(([a, b], i) => I('path', { d: insWirePath(a, b), class: 'w ' + sol.wireState[i] }, insWires));
+    S.wires.forEach(([a, b], i) => I('path', { d: sol.wireRev[i] ? insWirePath(b, a) : insWirePath(a, b), class: 'w ' + sol.wireState[i] }, insWires));
     nodeCaps.innerHTML = '';
     Object.entries(insPos).forEach(([id, [x, y]]) => I('circle', { cx: x, cy: y, r: 7, fill: '#0f2348', stroke: '#c9d6f2', 'stroke-width': 2.5 }, nodeCaps));
 
