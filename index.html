@@ -502,12 +502,12 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     const g = E('g', { class: 'hit', tabindex: 0, role: 'switch' });
     E('circle', { cx: 896, cy, r: 40, fill: '#efede6', stroke: '#b7b3a7', 'stroke-width': 3, class: 'focusring' }, g);
     const knob = E('g', { style: `transition: transform .18s ease; transform-origin: 896px ${cy}px` }, g);
-    // red disc with a bar handle, as on the real machine; white marks show which way it is turned
-    E('circle', { cx: 896, cy, r: 31, fill: '#c8222c', stroke: '#8f141d', 'stroke-width': 2 }, knob);
-    E('rect', { x: 882, y: cy - 38, width: 28, height: 76, rx: 5, fill: '#d42a35', stroke: '#8f141d', 'stroke-width': 2 }, knob);
-    E('line', { x1: 896, y1: cy - 10, x2: 896, y2: cy + 10, stroke: '#fff', 'stroke-width': 2.5 }, knob);
-    E('text', { x: 896, y: cy - 17, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-weight': 700, 'font-size': 18, fill: '#fff' }, knob).textContent = name;
-    E('text', { x: 896, y: cy + 31, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-weight': 700, 'font-size': 18, fill: '#fff' }, knob).textContent = [4, 2, 1][r];
+    E('rect', { x: 881, y: cy - 40, width: 30, height: 80, rx: 4, fill: '#f8f7f2', stroke: '#2a2d33', 'stroke-width': 2 }, knob);
+    E('line', { x1: 896, y1: cy - 6, x2: 896, y2: cy + 12, stroke: '#2a2d33', 'stroke-width': 2 }, knob);
+    // the letter sits in a red dot, so the turn of the knob reads at a glance
+    E('circle', { cx: 896, cy: cy - 23, r: 12, fill: '#c8222c' }, knob);
+    E('text', { x: 896, y: cy - 17, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-weight': 700, 'font-size': 17, fill: '#fff' }, knob).textContent = name;
+    E('text', { x: 896, y: cy + 33, 'text-anchor': 'middle', 'font-family': 'PT Sans, sans-serif', 'font-style': 'italic', 'font-size': 18, fill: '#2a2d33' }, knob).textContent = [4, 2, 1][r];
     g.addEventListener('click', () => setSwitch(r, S.inp[r] === null ? 1 : 1 - S.inp[r]));
     return { g, knob };
   });
