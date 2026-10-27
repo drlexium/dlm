@@ -813,7 +813,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     Z: { label: 'ЗВЕРИ', names: { олень: 'olen', лиса: 'lisa', белка: 'belka', кабан: 'kaban' } },
     N: { label: 'НАСЕКОМЫЕ', names: { кузнечик: 'kuznechik', бабочка: 'babochka', стрекоза: 'strekoza', 'жук-олень': 'zhuk-olen' } }
   };
-  const cardHtml = c => `<div class="card" title="${c.name}"><img src="cards/${KINDS[c.k].names[c.name]}.jpg" alt="${c.name}"></div>`;
+  const cardHtml = c => `<div class="card" title="${c.name}"><img src="cards/${KINDS[c.k].names[c.name]}.jpg?v=2" alt="${c.name}"></div>`;
 
   function cardsDesk() {
     let order, piles, placed, cur, shown, done;
