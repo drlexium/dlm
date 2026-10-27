@@ -209,7 +209,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
         <div class="legend"><span><i class="l-flow"></i>ток</span><span><i class="l-live"></i>напряжение, тока нет</span><span><i class="l-dead"></i>обесточено</span></div>
       </div>
       <svg id="inside" class="view" viewBox="0 0 1000 720" role="img" aria-label="Электрическая схема ДЛМ с текущим состоянием контактов"></svg>
-      <p class="explain">Переключатель — это кривошип: поворот сдвигает планку. Под каждым столбцом, под каждой планкой, стоит пружинящая пластина, по бокам от неё два неподвижных контакта. При «1» планка уходит вправо, и штеккер из левого гнезда отгибает пластину на правый контакт. При «0» штеккер из правого гнезда отгибает её на левый. В среднем положении пластины никто не касается. Каждый столбец — три такие пластины подряд, по одной под каждой планкой, то есть логическое И. Перемычки собирают несколько столбцов на одну лампу — это ИЛИ. Вот и весь «процессор»: программа — это расстановка штеккеров и перемычек. <em>Механизм под крышкой — реконструкция: в брошюре его нет, фотографий тоже не нашлось.</em></p>
+      <p class="explain">Переключатель — это кривошип: поворот сдвигает планку. Под каждым столбцом, под каждой планкой, стоит пружинящая пластина, по бокам от неё два неподвижных контакта. При «1» планка уходит вправо, и штеккер из левого гнезда отгибает пластину на правый контакт. При «0» штеккер из правого гнезда отгибает её на левый. В среднем положении пластины никто не касается. Каждый столбец — три такие пластины подряд, по одной под каждой планкой, то есть логическое И. Перемычки собирают несколько столбцов на одну лампу — это ИЛИ. Вот и весь «процессор»: программа — это расстановка штеккеров и перемычек. <em>Механизм под крышкой — реконструкция: в брошюре его нет. Нашёлся лишь снимок машины с разломанным дном, и то, что на нём видно, с реконструкцией совпадает.</em></p>
     </div>
   </section>
 
@@ -573,7 +573,8 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
   });
 
   // =============== INSIDE VIEW: the mechanism, reconstructed ===============
-  // No photo of the mechanism under the cover is known; this follows the booklet (circuits open in
+  // The only known photo of the mechanism is a seller's shot of a machine with a broken bottom (lamps on top,
+  // upright leaves between the holes; the battery box hides the middle). This follows the booklet (circuits open in
   // the middle position) and the memory of an owner. Under every column, below each plank, an upright
   // spring leaf stands between the column's two holes, with a fixed contact on either side. Turning
   // a switch slides its plank: at «1» the peg in the left hole bends the leaf right onto its contact,
