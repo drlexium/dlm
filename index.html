@@ -77,6 +77,7 @@ svg .hit:focus-visible .focusring { stroke: var(--blue); stroke-width: 4; }
 .chip.over { border-color: var(--accent); color: var(--accent); }
 .ghost { font: inherit; font-size: 14px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 .ghost:hover { border-color: var(--blue); }
+.ghost:disabled { opacity: .45; cursor: default; border-color: var(--line); }
 .ghost:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 8px; }
@@ -132,6 +133,34 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
 .note { font-family: var(--font-body); font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; max-width: 68ch; margin: 0; }
 .sources { font-size: 14px; color: var(--muted); }
 .sources a { color: var(--blue); }
+
+/* the table: the die and the zoological cards, drawn after the photos of the kit */
+.desk { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+.desk h3 { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.desk-body { display: grid; gap: 12px; justify-items: start; }
+.desk-note { margin: 0; font-size: 14px; }
+.desk-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.die-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: end; }
+.die-row > div { display: grid; gap: 4px; justify-items: center; }
+.face { width: 36px; height: 36px; display: block; }
+.face.big { width: 64px; height: 64px; }
+.face rect { fill: #fff; stroke: #2a2d33; stroke-width: 1.5; }
+.face circle { fill: #2a2d33; }
+.sides { display: flex; gap: 6px; }
+.side { padding: 0; border: 0; background: none; cursor: pointer; border-radius: 7px; }
+.side:disabled { cursor: default; opacity: .4; }
+.side:not(:disabled):hover .face rect { stroke: var(--blue); stroke-width: 2.5; }
+.side:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.cap { font-size: 12px; color: var(--muted); }
+.piles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.pile { display: grid; gap: 8px; align-content: start; justify-items: start; padding: 8px; border-radius: 8px; border: 2px dashed transparent; min-width: 0; }
+.pile.cur { border-color: var(--accent); }
+.cards { display: flex; flex-wrap: wrap; gap: 4px; min-height: 56px; }
+.cards.down .card + .card { margin-left: -58px; }
+.card { width: 64px; height: 56px; background: #fff; border: 1px solid #b9c3d6; border-radius: 4px; display: grid; place-items: center; align-content: center; color: #23409a; font: 700 10px var(--font-body); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); flex: none; }
+.card svg { width: 42px; height: 30px; fill: none; stroke: #23409a; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.card.label { width: auto; height: 30px; padding: 0 8px; font-size: 11px; letter-spacing: .05em; }
+.card.back { background: repeating-linear-gradient(45deg, #23409a 0 4px, #3552ad 4px 8px); border-color: #1b2f73; }
 </style>
 
 </head>
@@ -256,6 +285,10 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
       <h3><span class="gn">Игра 11.</span> Автоматическое управление лифтом</h3>
       <p>А — направление до вызова (1 — вверх). Б — вызов вверх. В — вызов вниз.</p>
       <p>X — дверь разблокирована. Y — мотор работает. Z — лифт поедет вверх. При двух вызовах сразу лифт сохраняет прежнее направление.</p>
+    </section>
+    <section class="desk" id="desk" hidden>
+      <h3>На столе</h3>
+      <div class="desk-body" id="desk-body"></div>
     </section>
     <section class="sources">
       <div>Источник: «Игрушка Детская логическая машина ДЛМ. Руководство по эксплуатации». ВНИИ «Электронстандарт», Гатчина, 1987 — <a href="DLM_rukovodstvo_1987.pdf">скачать PDF</a> (сканы, набранный текст и расшифровка рисунков программ). Логические элементы взяты из статьи <a href="https://habr.com/ru/articles/807187/" target="_blank" rel="noopener">«Криптография и другие вычисления на детских логических машинах»</a> (Хабр).</div>
@@ -729,6 +762,108 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     document.getElementById('ch-desc').textContent = prog ? prog.d : OWN_HINT;
   }
 
+  // ---- the table: the die for games 3 and 4, the cards for game 8 ----
+  // Only props: the player looks at them and sets the switches, as with the real machine.
+  const desk = document.getElementById('desk'), deskBody = document.getElementById('desk-body');
+  let deskFor;
+  const rnd = n => Math.floor(Math.random() * n);
+  const PIPS = { 1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [2, 0], [0, 2], [2, 2]],
+    5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]], 6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]] };
+  const face = (n, big) => `<svg class="face${big ? ' big' : ''}" viewBox="0 0 30 30" role="img" aria-label="${n}"><rect x="1" y="1" width="28" height="28" rx="6"/>` +
+    PIPS[n].map(([x, y]) => `<circle cx="${8 + x * 7}" cy="${8 + y * 7}" r="2.6"/>`).join('') + '</svg>';
+
+  function dieDesk(game4) {
+    let top = 1 + rnd(6), sum = top, log = [top];
+    const draw = () => {
+      const sides = [1, 2, 3, 4, 5, 6].filter(f => f !== top && f !== 7 - top);
+      const can = f => game4 && sum < 12 && sum + f <= 12;
+      const stuck = game4 && sum < 12 && !sides.some(can);
+      deskBody.innerHTML = `<div class="die-row">
+          <div>${face(top, true)}<span class="cap">сверху</span></div>
+          <div>${face(7 - top)}<span class="cap">снизу</span></div>
+          <div><div class="sides">${sides.map(f => `<button type="button" class="side" data-f="${f}" aria-label="Повернуть на ${f}"${can(f) ? '' : ' disabled'}>${face(f)}</button>`).join('')}</div>
+            <span class="cap">сбоку${game4 ? ': щелчок поворачивает кубик этой гранью вверх' : ''}</span></div>
+        </div>` +
+        (game4 ? `<p class="desk-note">Сумма: <b>${sum}</b>${sum > 7 && sum < 12 ? ` (в машину вводится ${sum - 8})` : ''}${sum === 12 ? '. Набрано 12!' : stuck ? '. Ходов нет: ничья.' : ''}<br><span class="cap">${log.join(' → ')}</span></p>` : '') +
+        `<button type="button" class="ghost" data-act="throw">${game4 ? 'Новая партия: бросить кубик' : 'Бросить кубик'}</button>`;
+    };
+    deskBody.onclick = e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.act === 'throw') { top = 1 + rnd(6); sum = top; log = [top]; }
+      else { top = +b.dataset.f; sum += top; log.push('+' + top + ' = ' + sum); }
+      draw();
+    };
+    draw();
+  }
+
+  // Game 8: four birds, four beasts, four insects; the labels lie by the piles in any order.
+  const KINDS = {
+    P: { label: 'ПТИЦЫ', names: ['гусь', 'утка', 'сова', 'воробей'],
+      icon: '<ellipse cx="18" cy="17" rx="10" ry="6"/><circle cx="29" cy="10" r="3.5"/><path d="M26 13 24 15M32 9.5 37 11 32 12.5M10 15Q18 10 24 16M8 17 3 13 4 20ZM16 23 15 28M21 23 22 28"/>' },
+    Z: { label: 'ЗВЕРИ', names: ['заяц', 'лиса', 'медведь', 'ёж'],
+      icon: '<ellipse cx="17" cy="18" rx="10" ry="6"/><circle cx="29" cy="13" r="4"/><path d="M28 9 26 2M31 9 34 2M11 23 9 28M23 23 25 28"/><circle cx="6" cy="17" r="2"/>' },
+    N: { label: 'НАСЕКОМЫЕ', names: ['жук', 'бабочка', 'стрекоза', 'муравей'],
+      icon: '<path d="M20 8V25M20 12C11 2 4 9 10 15 4 20 12 26 20 18M20 12C29 2 36 9 30 15 36 20 28 26 20 18M20 8 16 3M20 8 24 3"/>' }
+  };
+  const cardHtml = c => `<div class="card" title="${c.name}"><svg viewBox="0 0 40 30" aria-hidden="true">${KINDS[c.k].icon}</svg>${c.name}</div>`;
+
+  function cardsDesk() {
+    let order, piles, placed, cur, shown, done;
+    const deal = () => {
+      const deck = Object.keys(KINDS).flatMap(k => KINDS[k].names.map(name => ({ k, name })));
+      for (let i = deck.length - 1; i > 0; i--) { const j = rnd(i + 1); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+      order = Object.keys(KINDS).sort(() => Math.random() - .5);
+      piles = { P: deck.slice(0, 4), Z: deck.slice(4, 8), N: deck.slice(8) };   // index 0 is the top card
+      placed = { P: [], Z: [], N: [] }; cur = 'P'; shown = false; done = false;
+    };
+    const step = () => {
+      const c = piles[cur].shift();
+      placed[c.k].push(c); cur = c.k;
+      done = !piles[cur].length;
+    };
+    const draw = () => {
+      const full = Object.keys(KINDS).filter(k => placed[k].length === 4).map(k => KINDS[k].label.toLowerCase());
+      deskBody.innerHTML = `<div class="piles">${order.map(k => {
+        const down = piles[k], bottom = down[down.length - 1];
+        return `<div class="pile${!done && cur === k ? ' cur' : ''}">
+          <div class="card label">${KINDS[k].label}</div>
+          <div class="cards down" aria-label="Рубашкой вверх: ${down.length}">${down.map((c, i) => shown && i === down.length - 1 && (k !== 'P') ? cardHtml(c) : '<div class="card back"></div>').join('')}</div>
+          <span class="cap">${down.length ? `рубашкой вверх: ${down.length}${shown && k !== 'P' ? `, нижняя — ${bottom.name}` : ''}` : 'пусто'}</span>
+          <div class="cards">${placed[k].map(cardHtml).join('')}</div>
+        </div>`;
+      }).join('')}</div>
+      <p class="desk-note">${done ? `Раскладка окончена. У своих надписей собрались все четыре карточки: ${full.join(', ')}.` :
+        Object.values(placed).some(x => x.length) ? 'Следующую карточку берите из стопки, обведённой красным.' :
+        shown ? 'Нижние карточки у «Насекомых» и «Зверей» открыты: ответьте по ним на вопросы А, Б, В и нажмите кнопку машины. Потом раскладывайте.' :
+        'Сначала посмотрите нижние карточки у надписей «Насекомые» и «Звери».'}</p>
+      <div class="desk-btns">
+        <button type="button" class="ghost" data-act="deal">Перемешать и разложить</button>
+        <button type="button" class="ghost" data-act="show"${shown ? ' disabled' : ''}>Посмотреть нижние карточки</button>
+        <button type="button" class="ghost" data-act="step"${done ? ' disabled' : ''}>Переложить карточку</button>
+        <button type="button" class="ghost" data-act="all"${done ? ' disabled' : ''}>Доиграть</button>
+      </div>`;
+    };
+    deskBody.onclick = e => {
+      const act = e.target.closest('button')?.dataset.act;
+      if (act === 'deal') deal();
+      else if (act === 'show') shown = true;
+      else if (act === 'step') step();
+      else if (act === 'all') while (!done) step();
+      else return;
+      draw();
+    };
+    deal(); draw();
+  }
+
+  function renderDesk() {
+    if (deskFor === S.prog) return;
+    deskFor = S.prog;
+    const make = { game3: () => dieDesk(false), game4: () => dieDesk(true), game8: cardsDesk }[S.prog];
+    desk.hidden = !make;
+    if (make) make(); else { deskBody.innerHTML = ''; deskBody.onclick = null; }
+  }
+
   const tt = document.getElementById('tt');
   function renderTable() {
     let h = '<thead><tr><th>А</th><th>Б</th><th>В</th>' + LAMPS.map((L, i) => `<th${i ? '' : ' class="sep"'}>${L.name}</th>`).join('') + '<th class="sep">число</th></tr></thead><tbody>';
@@ -867,6 +1002,7 @@ table.tt { border-collapse: collapse; font-family: var(--font-mono); font-size: 
     renderTable();
     renderExprs();
     renderChapter();
+    renderDesk();
     progBtns.forEach(([id, b]) => b.setAttribute('aria-pressed', S.prog === id ? 'true' : 'false'));
 
     const n = pinCount(), chip = document.getElementById('pincount');
